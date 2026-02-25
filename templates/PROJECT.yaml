@@ -1,0 +1,16 @@
+name: "{project_name}"
+summary: "{one_liner_description}"
+
+core_value: "{the_one_thing_that_must_work}"
+
+background: "{why_this_project_exists}"
+
+constraints:
+  - "{constraint_1}"
+  - "{constraint_2}"
+
+success_criteria:
+  - "{measurable_criterion_1}"
+  - "{measurable_criterion_2}"
+
+last_updated: "{date}"

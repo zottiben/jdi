@@ -1,0 +1,24 @@
+# Only active phases. Completed phases are pruned automatically.
+
+overview:
+  total_phases: 1
+  completed: []
+  active: [1]
+
+phases:
+  1:
+    name: "{phase_name}"
+    status: pending
+    goal: "{what_this_phase_achieves}"
+    requirements: ["{REQ-ID-1}", "{REQ-ID-2}"]
+    must_haves:
+      - "{observable_outcome_1}"
+      - "{observable_outcome_2}"
+    plans:
+      "01":
+        name: "{plan_name}"
+        tasks: 0
+        waves: [1]
+        status: pending
+
+last_updated: "{date}"

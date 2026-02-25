@@ -1,0 +1,72 @@
+session:
+  id: null
+  started_at: null
+  last_activity: null
+
+project:
+  name: null
+  root: null
+  initialised: false
+  initialised_at: null
+
+position:
+  phase: null
+  phase_name: null
+  plan: null
+  plan_name: null
+  task: null
+  task_name: null
+  status: idle
+
+progress:
+  phases_total: 0
+  phases_completed: 0
+  plans_total: 0
+  plans_completed: 0
+  tasks_total: 0
+  tasks_completed: 0
+
+current_plan:
+  path: null
+  tasks: []
+  completed_tasks: []
+  current_task_index: null
+
+current_phase:
+  waves:
+    computed: false
+    total_waves: 0
+    current_wave: null
+    structure: []
+  plans_by_wave: {}
+
+worktree:
+  active: false
+  path: null
+  branch: null
+  created_at: null
+  type: null
+
+continuation:
+  file: null
+  paused_at: null
+  resume_action: null
+
+commits:
+  session_commits: []
+  last_commit_hash: null
+  last_commit_message: null
+
+checkpoints:
+  last_checkpoint: null
+  checkpoint_type: null
+  awaiting_response: false
+
+deviations: []
+
+blockers: []
+
+metadata:
+  context_usage_estimate: 0
+  agent_spawns: 0
+  errors_encountered: 0

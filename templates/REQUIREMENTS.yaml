@@ -1,0 +1,27 @@
+# Only active requirements. Completed phases are pruned automatically.
+
+active_phase: 1
+
+phases:
+  1:
+    name: "{phase_name}"
+    requirements:
+      "{REQ-ID}":
+        description: "{requirement_description}"
+        priority: must | should | could
+        status: pending
+        acceptance_criteria:
+          - "{criterion_1}"
+          - "{criterion_2}"
+
+out_of_scope:
+  - "{exclusion_1}: {reason}"
+
+risks:
+  - id: R-01
+    description: "{risk_description}"
+    mitigation: "{mitigation_approach}"
+
+completed_phases: []
+
+last_updated: "{date}"
