@@ -3,21 +3,28 @@ import { consola } from "consola";
 import { resolve } from "path";
 import { detectProjectType } from "../utils/detect-project";
 import { readAdapter } from "../utils/adapter";
+import { spawnClaude } from "../utils/claude";
+import { readState } from "../utils/state";
 
 export const implementCommand = defineCommand({
   meta: {
     name: "implement",
-    description: "Generate an implementation prompt for Claude Code",
+    description: "Execute an implementation plan using Claude Code",
   },
   args: {
     plan: {
       type: "positional",
-      description: "Path to the PLAN.md file to execute",
-      required: true,
+      description: "Path to the PLAN.md file (auto-detected from state if omitted)",
+      required: false,
     },
     output: {
       type: "string",
       description: "Write prompt to file instead of stdout",
+    },
+    print: {
+      type: "boolean",
+      description: "Print the prompt to stdout instead of executing",
+      default: false,
     },
     team: {
       type: "boolean",
@@ -32,6 +39,19 @@ export const implementCommand = defineCommand({
   },
   async run({ args }) {
     const cwd = process.cwd();
+
+    // Auto-discover plan from state if not provided
+    let planPath = args.plan;
+    if (!planPath) {
+      const state = await readState(cwd);
+      planPath = state?.current_plan?.path ?? null;
+      if (!planPath) {
+        consola.error("No plan specified and no current plan found in state. Run `jdi plan` first or provide a plan path.");
+        process.exit(1);
+      }
+      consola.info(`Using current plan: ${planPath}`);
+    }
+
     const baseProtocol = resolve(cwd, ".jdi/framework/components/meta/AgentBase.md");
     const complexityRouter = resolve(cwd, ".jdi/framework/components/meta/ComplexityRouter.md");
     const orchestration = resolve(cwd, ".jdi/framework/components/meta/AgentTeamsOrchestration.md");
@@ -62,7 +82,7 @@ export const implementCommand = defineCommand({
       `- Working directory: ${cwd}`,
       ``,
       `## Task`,
-      `Execute implementation plan: ${resolve(cwd, args.plan)}${overrideFlag}`,
+      `Execute implementation plan: ${resolve(cwd, planPath)}${overrideFlag}`,
       ``,
       `Follow the implement-plan orchestration:`,
       `1. Read codebase context (.jdi/codebase/SUMMARY.md if exists)`,
@@ -78,8 +98,14 @@ export const implementCommand = defineCommand({
     if (args.output) {
       await Bun.write(resolve(cwd, args.output), prompt);
       consola.success(`Prompt written to ${args.output}`);
-    } else {
+    } else if (args.print) {
       console.log(prompt);
+    } else {
+      const { exitCode } = await spawnClaude(prompt, { cwd });
+      if (exitCode !== 0) {
+        consola.error(`Claude exited with code ${exitCode}`);
+        process.exit(exitCode);
+      }
     }
   },
 });

@@ -2,11 +2,12 @@ import { defineCommand } from "citty";
 import { consola } from "consola";
 import { resolve } from "path";
 import { exec } from "../utils/git";
+import { spawnClaude } from "../utils/claude";
 
 export const reviewCommand = defineCommand({
   meta: {
     name: "review",
-    description: "Fetch PR diff and generate a structured review prompt",
+    description: "Review a PR using Claude Code",
   },
   args: {
     pr: {
@@ -17,6 +18,11 @@ export const reviewCommand = defineCommand({
     output: {
       type: "string",
       description: "Write prompt to file instead of stdout",
+    },
+    print: {
+      type: "boolean",
+      description: "Print the prompt to stdout instead of executing",
+      default: false,
     },
   },
   async run({ args }) {
@@ -98,8 +104,14 @@ export const reviewCommand = defineCommand({
     if (args.output) {
       await Bun.write(resolve(process.cwd(), args.output), prompt);
       consola.success(`Review prompt written to ${args.output}`);
-    } else {
+    } else if (args.print) {
       console.log(prompt);
+    } else {
+      const { exitCode } = await spawnClaude(prompt, { cwd: process.cwd() });
+      if (exitCode !== 0) {
+        consola.error(`Claude exited with code ${exitCode}`);
+        process.exit(exitCode);
+      }
     }
   },
 });

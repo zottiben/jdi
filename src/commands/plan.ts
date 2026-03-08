@@ -3,11 +3,12 @@ import { consola } from "consola";
 import { resolve } from "path";
 import { detectProjectType } from "../utils/detect-project";
 import { readAdapter } from "../utils/adapter";
+import { spawnClaude } from "../utils/claude";
 
 export const planCommand = defineCommand({
   meta: {
     name: "plan",
-    description: "Generate a planning prompt for Claude Code",
+    description: "Plan a feature using Claude Code",
   },
   args: {
     description: {
@@ -18,6 +19,11 @@ export const planCommand = defineCommand({
     output: {
       type: "string",
       description: "Write prompt to file instead of stdout",
+    },
+    print: {
+      type: "boolean",
+      description: "Print the prompt to stdout instead of executing",
+      default: false,
     },
   },
   async run({ args }) {
@@ -55,8 +61,14 @@ export const planCommand = defineCommand({
     if (args.output) {
       await Bun.write(resolve(cwd, args.output), prompt);
       consola.success(`Prompt written to ${args.output}`);
-    } else {
+    } else if (args.print) {
       console.log(prompt);
+    } else {
+      const { exitCode } = await spawnClaude(prompt, { cwd });
+      if (exitCode !== 0) {
+        consola.error(`Claude exited with code ${exitCode}`);
+        process.exit(exitCode);
+      }
     }
   },
 });
