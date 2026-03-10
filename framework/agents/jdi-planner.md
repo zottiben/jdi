@@ -58,12 +58,23 @@ Plan files use human-readable slugged names: `{phase}-{plan}-{slug}.{suffix}`
 
 ## Task Sizing
 
+Use t-shirt sizes instead of time estimates:
+
+| Size | Scope |
+|------|-------|
+| **S** | Single file change, simple logic |
+| **M** | 2-4 files, moderate logic or integration |
+| **L** | 5+ files, complex logic, multiple subsystems |
+| **XL** | Too large — must be split into multiple tasks |
+
 | Constraint | Value |
 |------------|-------|
-| Duration | 15-60 min per task |
 | Tasks per plan | 2-4 maximum |
 | Context target | ~50% of budget |
 | Each task | Independently verifiable |
+| Max task size | L (split XL into smaller tasks) |
+
+Never use time estimates. Use S/M/L sizing in task manifests and plan summaries.
 
 ---
 
@@ -137,7 +148,7 @@ Read `.jdi/config/variables.yaml` (create from template if missing). Update: `fe
 3. Write each task to `.jdi/plans/{phase}-{plan}-{slug}.T{n}.md` — follow template from `.jdi/framework/templates/PLAN-TASK.md`. One file per task.
 
 #### 7b: Update ROADMAP.yaml
-Add plan entry to appropriate phase section with wave and duration.
+Add plan entry to appropriate phase section with wave and sizing.
 
 #### 7c: Update REQUIREMENTS.yaml Traceability
 Map requirements to plan tasks.
@@ -153,7 +164,7 @@ task_files:
   - .jdi/plans/{phase}-{plan}-{slug}.T1.md
   - .jdi/plans/{phase}-{plan}-{slug}.T2.md
 task_count: {n}
-estimated_duration: {time}
+overall_size: S | M | L
 wave: {assigned_wave}
 provides: [what this plan delivers]
 ```

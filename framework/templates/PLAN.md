@@ -62,11 +62,11 @@ tech_stack:
 
 ## Tasks
 
-| Task | Name | Type | Wave | File |
-|------|------|------|------|------|
-| T1 | {Task Name} | auto | 1 | `{X}-{YY}-{plan-slug}.T1.md` |
-| T2 | {Task Name} | auto | 1 | `{X}-{YY}-{plan-slug}.T2.md` |
-| T3 | {Task Name} | checkpoint:human-verify | 2 | `{X}-{YY}-{plan-slug}.T3.md` |
+| Task | Name | Size | Type | Wave | File |
+|------|------|------|------|------|------|
+| T1 | {Task Name} | S | auto | 1 | `{X}-{YY}-{plan-slug}.T1.md` |
+| T2 | {Task Name} | M | auto | 1 | `{X}-{YY}-{plan-slug}.T2.md` |
+| T3 | {Task Name} | S | checkpoint:human-verify | 2 | `{X}-{YY}-{plan-slug}.T3.md` |
 
 > Task details are in individual files. See `task_files` in frontmatter.
 
