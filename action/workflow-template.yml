@@ -15,6 +15,7 @@
 #   Hey Jedi review                    — Review the current PR
 #   Hey Jedi feedback                  — Address PR review comments
 #   Hey Jedi do <clickup-ticket-url>   — Full flow: plan + implement from ticket
+#   Hey Jedi ping                      — Check framework status
 #
 # Conversation: Jedi supports back-and-forth iteration. After Jedi responds,
 # reply with feedback to refine, or say "approved" to finalise.

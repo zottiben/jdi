@@ -15,7 +15,7 @@ import {
   buildConversationContext,
 } from "../utils/github";
 
-type JediCommand = "plan" | "implement" | "quick" | "review" | "feedback";
+type JediCommand = "plan" | "implement" | "quick" | "review" | "feedback" | "ping";
 
 interface ParsedIntent {
   command: JediCommand;
@@ -61,6 +61,9 @@ function parseComment(
   const lower = body.toLowerCase();
 
   // Explicit commands always start a new workflow
+  if (lower.startsWith("ping") || lower.startsWith("status")) {
+    return { command: "ping", description: "", clickUpUrl: null, fullFlow: false, isFeedback: false };
+  }
   if (lower.startsWith("plan ")) {
     return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false };
   }
@@ -178,6 +181,54 @@ export const actionCommand = defineCommand({
     // React with eyes to indicate processing
     if (repo && commentId) {
       await reactToComment(repo, commentId, "eyes").catch(() => {});
+    }
+
+    // Ping: quick framework status check — no Claude invocation needed
+    if (intent.command === "ping") {
+      const { existsSync } = await import("fs");
+      const { join } = await import("path");
+
+      const frameworkExists = existsSync(join(cwd, ".jdi/framework"));
+      const claudeMdExists = existsSync(join(cwd, ".claude/CLAUDE.md"));
+      const stateExists = existsSync(join(cwd, ".jdi/config/state.yaml"));
+      const learningsExists = existsSync(join(cwd, ".jdi/persistence/learnings.md"));
+
+      let version = "unknown";
+      try {
+        const pkgPath = join(cwd, "node_modules/@benzotti/jedi/package.json");
+        if (existsSync(pkgPath)) {
+          const pkg = JSON.parse(await Bun.file(pkgPath).text());
+          version = pkg.version;
+        }
+      } catch {}
+
+      const lines = [
+        `### Jedi Framework Status`,
+        ``,
+        `| Component | Status |`,
+        `|-----------|--------|`,
+        `| Framework files | ${frameworkExists ? "found" : "missing"} |`,
+        `| CLAUDE.md | ${claudeMdExists ? "found" : "missing"} |`,
+        `| State config | ${stateExists ? "found" : "missing"} |`,
+        `| Learnings | ${learningsExists ? "found" : "missing"} |`,
+        `| Version | \`${version}\` |`,
+        ``,
+        `---`,
+        `_Powered by [@benzotti/jedi](https://github.com/zottiben/jedi)_`,
+      ];
+
+      if (repo && issueNumber) {
+        await postGitHubComment(repo, issueNumber, lines.join("\n")).catch((err) => {
+          consola.error("Failed to post ping comment:", err);
+        });
+      } else {
+        console.log(lines.join("\n"));
+      }
+
+      if (repo && commentId) {
+        await reactToComment(repo, commentId, "+1").catch(() => {});
+      }
+      return;
     }
 
     // Load persisted state via storage

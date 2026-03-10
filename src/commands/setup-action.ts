@@ -57,6 +57,7 @@ export const setupActionCommand = defineCommand({
         "  Hey Jedi do <clickup-ticket-url>",
         "  Hey Jedi review",
         "  Hey Jedi feedback",
+        "  Hey Jedi ping",
         "",
         "Conversation: Reply to Jedi with feedback to iterate,",
         "or say 'approved' to finalise.",
