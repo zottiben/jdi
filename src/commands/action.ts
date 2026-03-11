@@ -25,6 +25,7 @@ interface ParsedIntent {
   clickUpUrl: string | null;
   fullFlow: boolean;
   isFeedback: boolean;
+  isApproval: boolean;
 }
 
 function parseComment(
@@ -43,6 +44,7 @@ function parseComment(
         clickUpUrl: null,
         fullFlow: false,
         isFeedback: true,
+        isApproval: false,
       };
     }
     return null;
@@ -64,33 +66,33 @@ function parseComment(
 
   // Explicit commands always start a new workflow
   if (lower.startsWith("ping") || lower.startsWith("status")) {
-    return { command: "ping", description: "", clickUpUrl: null, fullFlow: false, isFeedback: false };
+    return { command: "ping", description: "", clickUpUrl: null, fullFlow: false, isFeedback: false, isApproval: false };
   }
   if (lower.startsWith("plan ")) {
-    return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false };
+    return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
   }
   if (lower.startsWith("implement")) {
-    return { command: "implement", description, clickUpUrl, fullFlow: false, isFeedback: false };
+    return { command: "implement", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
   }
   if (lower.startsWith("quick ")) {
-    return { command: "quick", description, clickUpUrl, fullFlow: false, isFeedback: false };
+    return { command: "quick", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
   }
   if (lower.startsWith("review")) {
-    return { command: "review", description, clickUpUrl, fullFlow: false, isFeedback: false };
+    return { command: "review", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
   }
   if (lower.startsWith("feedback")) {
-    return { command: "feedback", description, clickUpUrl, fullFlow: false, isFeedback: false };
+    return { command: "feedback", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
   }
 
   // "do" triggers full flow (plan + implement) if ClickUp URL present
   if (lower.startsWith("do ")) {
     if (clickUpUrl) {
-      return { command: "plan", description, clickUpUrl, fullFlow: true, isFeedback: false };
+      return { command: "plan", description, clickUpUrl, fullFlow: true, isFeedback: false, isApproval: false };
     }
-    return { command: "quick", description, clickUpUrl, fullFlow: false, isFeedback: false };
+    return { command: "quick", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
   }
 
-  // "approved" / "lgtm" / "looks good" — approval feedback
+  // "approved" / "lgtm" / "looks good" — explicit approval (does NOT trigger implementation)
   if (/^(approved?|lgtm|looks?\s*good|ship\s*it)/i.test(lower)) {
     return {
       command: "plan",
@@ -98,10 +100,11 @@ function parseComment(
       clickUpUrl: null,
       fullFlow: false,
       isFeedback: true,
+      isApproval: true,
     };
   }
 
-  // If there's an existing conversation, treat ambiguous "Hey Jedi" messages as feedback
+  // If there's an existing conversation, treat ambiguous "Hey Jedi" messages as refinement feedback
   if (isFollowUp) {
     return {
       command: "plan",
@@ -109,11 +112,12 @@ function parseComment(
       clickUpUrl: null,
       fullFlow: false,
       isFeedback: true,
+      isApproval: false,
     };
   }
 
   // Default: treat as new plan request
-  return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false };
+  return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
 }
 
 export const actionCommand = defineCommand({
@@ -177,7 +181,7 @@ export const actionCommand = defineCommand({
     }
 
     consola.info(
-      `Parsed intent: ${intent.isFeedback ? "feedback on previous" : intent.command}${intent.fullFlow ? " (full flow)" : ""}`,
+      `Parsed intent: ${intent.isApproval ? "approval (finalise plan)" : intent.isFeedback ? "refinement feedback" : intent.command}${intent.fullFlow ? " (full flow)" : ""}`,
     );
 
     // React with eyes to indicate processing
@@ -186,7 +190,7 @@ export const actionCommand = defineCommand({
     }
 
     // Post a thinking placeholder comment
-    const commandLabel = intent.isFeedback ? "feedback" : intent.command;
+    const commandLabel = intent.isApproval ? "plan" : intent.isFeedback ? "feedback" : intent.command;
     let placeholderCommentId: number | null = null;
     if (repo && issueNumber) {
       const thinkingBody = `<h3>🧠 Jedi <sup>thinking</sup></h3>\n\n---\n\n_Working on it..._`;
@@ -291,8 +295,8 @@ export const actionCommand = defineCommand({
     // Build prompt based on whether this is feedback or a new command
     let prompt: string;
 
-    if (intent.isFeedback) {
-      // ── Feedback / follow-up on existing conversation ──
+    if (intent.isFeedback && intent.isApproval) {
+      // ── Approval — finalise the plan, but do NOT implement ──
       prompt = [
         `Read ${baseProtocol} for the base agent protocol.`,
         ``,
@@ -300,29 +304,45 @@ export const actionCommand = defineCommand({
         ``,
         conversationHistory,
         ``,
-        `## Current Feedback`,
-        `The user has provided feedback on previous Jedi work:`,
-        ``,
+        `## Plan Approved`,
         `> ${intent.description}`,
         ``,
+        `The user has approved the plan. Finalise it:`,
+        `1. Read \`.jdi/config/state.yaml\` and update \`review.status\` to "approved" and \`review.approved_at\` to now`,
+        `2. Do NOT implement any code — approval and implementation are separate gates`,
+        ``,
+        `Respond with a short confirmation that the plan is approved and ready, then ask:`,
+        `"Say **implement** when you're ready to go."`,
+      ].join("\n");
+    } else if (intent.isFeedback) {
+      // ── Refinement — update the plan only, NEVER implement ──
+      const agentSpec = resolve(cwd, `.jdi/framework/agents/jdi-planner.md`);
+
+      prompt = [
+        `Read ${baseProtocol} for the base agent protocol.`,
+        `You are jdi-planner. Read ${agentSpec} for your full specification.`,
+        ``,
+        ...contextLines,
+        ``,
+        conversationHistory,
+        ``,
+        `## Refinement Feedback`,
+        `> ${intent.description}`,
+        ``,
+        `## HARD CONSTRAINTS — PLAN REFINEMENT MODE`,
+        `- ONLY modify files under \`.jdi/plans/\` and \`.jdi/config/\` — NEVER create, edit, or delete source code files`,
+        `- NEVER run \`git commit\`, \`git push\`, or any git write operations`,
+        `- Planning and implementation are SEPARATE gates — user must explicitly approve before implementation`,
+        ``,
         `## Instructions`,
-        `Review the previous conversation above. The user is iterating on work Jedi already started.`,
+        `Read state.yaml and existing plan files. Apply feedback incrementally — do not restart from scratch.`,
+        `If the feedback is a question, answer it conversationally. If it implies a plan change, update the plan.`,
         ``,
-        `IMPORTANT: Always be conversational. If the user asks a question, ANSWER IT FIRST before taking any action.`,
-        `Explain your reasoning, then describe what you'll do (if anything), then do it.`,
-        `Never silently make changes without explaining why.`,
-        ``,
-        `- If the feedback is a **question** ("why did you...", "what about...", "can you explain..."), answer it conversationally first. If the answer implies a change is needed, explain that and then apply it.`,
-        `- If the feedback is an **approval** ("approved", "lgtm", "looks good", "ship it"), finalise the current work — commit all outstanding changes and push to the current branch. Do NOT ask — just do it.`,
-        `- If the feedback is a **refinement** ("change task 2", "use a different approach", "add error handling"), explain what you're changing and why, then apply the changes. Present an updated summary with the full updated plan in a collapsible block:`,
-        `   <details>`,
-        `   <summary>View full plan</summary>`,
-        `   `,
-        `   [full updated plan content here as markdown]`,
-        `   `,
-        `   </details>`,
-        ``,
-        `Read state.yaml and any existing plan files to understand what was previously done. Apply changes incrementally — do not restart from scratch.`,
+        `## Response Format (MANDATORY)`,
+        `1-2 sentence summary of what changed. Then the full updated plan in a collapsible block:`,
+        `\`<details><summary>View full plan</summary> ... </details>\``,
+        `Use the same plan structure as the initial plan (tasks table, per-task details, verification).`,
+        `End with: "Any changes before implementation?"`,
       ].join("\n");
     } else {
       // ── New command ──
@@ -534,7 +554,7 @@ export const actionCommand = defineCommand({
 
     // Update placeholder comment with final response (or post new if placeholder failed)
     if (repo && issueNumber) {
-      const actionLabel = intent.isFeedback ? "feedback" : intent.command;
+      const actionLabel = intent.isApproval ? "implement" : intent.isFeedback ? "feedback" : intent.command;
       let commentBody: string;
 
       if (success && fullResponse) {

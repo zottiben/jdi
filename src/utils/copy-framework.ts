@@ -116,19 +116,27 @@ Based on the user's request, follow the appropriate workflow:
 - **PR feedback** ("feedback"): Address review comments using \`.jdi/framework/agents/jdi-pr-feedback.md\`. Extract learnings from reviewer preferences.
 - **"do" + ClickUp URL**: Full flow — plan from ticket, then implement.
 
+## Approval Gate
+
+Planning and implementation are separate gates — NEVER auto-proceed to implementation after planning or plan refinement.
+When the user provides refinement feedback on a plan, ONLY update the plan files in \`.jdi/plans/\`. Do NOT implement code.
+Implementation only happens when the user explicitly approves ("approved", "lgtm", "looks good", "ship it") or explicitly requests implementation ("implement", "build", "execute").
+
 ## Auto-Commit (CI Mode)
 
-You are running inside a GitHub Action on a PR branch. After implementing or making changes:
-1. Stage all changed files with \`git add\` (only files you changed — NOT .jdi/ or .claude/)
+You are running inside a GitHub Action on a PR branch. After **implementing** changes (NOT after planning or plan refinement):
+1. Stage all changed files with \`git add\` (only source files you changed — NOT .jdi/ or .claude/)
 2. Commit with a conventional commit message (e.g. "feat: implement X")
 3. Push to the current branch with \`git push\`
 Do NOT ask the user whether to commit — just do it. The user will review the PR diff directly.
+Plan files (\`.jdi/plans/\`) are cached separately and should NOT be committed.
 
 ## Iterative Refinement
 
 After completing any workflow, present a summary and ask for feedback.
-When the user provides feedback, apply changes incrementally — do not restart from scratch.
-When the user approves ("approved", "lgtm", "looks good"), finalise the work — commit and push all outstanding changes.
+- **Plan refinement feedback** (e.g. "add error handling", "change task 2", "use a different approach"): Update ONLY the plan files in \`.jdi/plans/\`. Present the updated plan. Ask "Any changes before implementation?" Do NOT implement code.
+- **Approval** ("approved", "lgtm", "looks good", "ship it"): Mark the plan as approved. Do NOT implement — wait for an explicit "implement" command.
+- **Questions** ("why did you...", "what about..."): Answer conversationally first, then take action if needed.
 
 ## ClickUp Integration
 
