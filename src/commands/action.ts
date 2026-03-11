@@ -7,6 +7,12 @@ import { spawnClaude } from "../utils/claude";
 import { createStorage } from "../storage";
 import { loadPersistedState, savePersistedState } from "../utils/storage-lifecycle";
 import { extractClickUpId, fetchClickUpTicket, formatTicketAsContext } from "../utils/clickup";
+import { checkAuthorization } from "../utils/auth";
+import { sanitizeUserInput, fenceUserInput } from "../utils/sanitize";
+import { readState, writeState } from "../utils/state";
+import { applyDryRunMode } from "../utils/prompt-builder";
+import { runQualityGates } from "../utils/verify";
+import { formatVerificationResults } from "../utils/github";
 import {
   postGitHubComment,
   updateGitHubComment,
@@ -26,25 +32,31 @@ interface ParsedIntent {
   fullFlow: boolean;
   isFeedback: boolean;
   isApproval: boolean;
+  dryRun: boolean;
 }
 
 function parseComment(
   comment: string,
   isFollowUp: boolean,
 ): ParsedIntent | null {
+  // Detect --dry-run flag in comment body
+  const hasDryRun = /--dry-run/i.test(comment);
+  const cleanComment = comment.replace(/--dry-run/gi, "").trim();
+
   // Strip "Hey Jedi" prefix (case-insensitive)
-  const match = comment.match(/hey\s+jedi\s+(.+)/is);
+  const match = cleanComment.match(/hey\s+jedi\s+(.+)/is);
   if (!match) {
     // No "Hey Jedi" prefix — if this is a follow-up in an existing conversation,
     // treat the entire comment as feedback
     if (isFollowUp) {
       return {
         command: "plan", // will be overridden by conversation context
-        description: comment.trim(),
+        description: cleanComment,
         clickUpUrl: null,
         fullFlow: false,
         isFeedback: true,
         isApproval: false,
+        dryRun: hasDryRun,
       };
     }
     return null;
@@ -64,60 +76,48 @@ function parseComment(
 
   const lower = body.toLowerCase();
 
+  const base = { clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false, dryRun: hasDryRun };
+
   // Explicit commands always start a new workflow
   if (lower.startsWith("ping") || lower.startsWith("status")) {
-    return { command: "ping", description: "", clickUpUrl: null, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "ping", description: "", clickUpUrl: null };
   }
   if (lower.startsWith("plan ")) {
-    return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "plan", description };
   }
   if (lower.startsWith("implement")) {
-    return { command: "implement", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "implement", description };
   }
   if (lower.startsWith("quick ")) {
-    return { command: "quick", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "quick", description };
   }
   if (lower.startsWith("review")) {
-    return { command: "review", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "review", description };
   }
   if (lower.startsWith("feedback")) {
-    return { command: "feedback", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "feedback", description };
   }
 
   // "do" triggers full flow (plan + implement) if ClickUp URL present
   if (lower.startsWith("do ")) {
     if (clickUpUrl) {
-      return { command: "plan", description, clickUpUrl, fullFlow: true, isFeedback: false, isApproval: false };
+      return { ...base, command: "plan", description, fullFlow: true };
     }
-    return { command: "quick", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+    return { ...base, command: "quick", description };
   }
 
   // "approved" / "lgtm" / "looks good" — explicit approval (does NOT trigger implementation)
   if (/^(approved?|lgtm|looks?\s*good|ship\s*it)/i.test(lower)) {
-    return {
-      command: "plan",
-      description: body,
-      clickUpUrl: null,
-      fullFlow: false,
-      isFeedback: true,
-      isApproval: true,
-    };
+    return { ...base, command: "plan", description: body, clickUpUrl: null, isFeedback: true, isApproval: true };
   }
 
   // If there's an existing conversation, treat ambiguous "Hey Jedi" messages as refinement feedback
   if (isFollowUp) {
-    return {
-      command: "plan",
-      description: body,
-      clickUpUrl: null,
-      fullFlow: false,
-      isFeedback: true,
-      isApproval: false,
-    };
+    return { ...base, command: "plan", description: body, clickUpUrl: null, isFeedback: true };
   }
 
   // Default: treat as new plan request
-  return { command: "plan", description, clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false };
+  return { ...base, command: "plan", description };
 }
 
 export const actionCommand = defineCommand({
@@ -147,12 +147,38 @@ export const actionCommand = defineCommand({
       type: "string",
       description: "Repository in owner/repo format",
     },
+    "comment-author": {
+      type: "string",
+      description: "GitHub username of the comment author (for auth gate)",
+    },
+    "allowed-users": {
+      type: "string",
+      description: "Comma-separated list of allowed GitHub usernames",
+    },
   },
   async run({ args }) {
     const cwd = process.cwd();
     const repo = args.repo ?? process.env.GITHUB_REPOSITORY;
     const commentId = args["comment-id"] ? Number(args["comment-id"]) : null;
     const issueNumber = Number(args["pr-number"] ?? args["issue-number"] ?? 0);
+    const commentAuthor = args["comment-author"] ?? process.env.COMMENT_AUTHOR ?? "";
+    const allowedUsers = args["allowed-users"] ?? process.env.ALLOWED_USERS ?? "";
+
+    // Opt-in authorization gate — only active if JEDI_AUTH_ENABLED or --allowed-users is set
+    if (commentAuthor && (allowedUsers || process.env.JEDI_AUTH_ENABLED)) {
+      const authResult = await checkAuthorization(repo!, commentAuthor, allowedUsers || undefined);
+      if (!authResult.authorized) {
+        consola.warn(`Auth denied: ${authResult.reason}`);
+        if (repo && commentId) {
+          await reactToComment(repo, commentId, "confused").catch(() => {});
+        }
+        if (repo && issueNumber) {
+          const denyBody = formatJediComment("auth", `Access denied: ${authResult.reason}`);
+          await postGitHubComment(repo, issueNumber, denyBody).catch(() => {});
+        }
+        return;
+      }
+    }
 
     // Fetch comment thread to detect if this is a follow-up conversation
     let conversationHistory = "";
@@ -173,6 +199,8 @@ export const actionCommand = defineCommand({
           `Continuing conversation (${context.previousJediRuns} previous Jedi run(s))${isPostImplementation ? " [post-implementation]" : ""}`,
         );
       }
+      // Sanitize conversation history (may contain user-controlled content)
+      conversationHistory = sanitizeUserInput(conversationHistory, 50_000);
     }
 
     // Parse intent — pass isFollowUp so ambiguous messages become feedback
@@ -181,6 +209,9 @@ export const actionCommand = defineCommand({
       consola.error("Could not parse 'Hey Jedi' intent from comment");
       process.exit(1);
     }
+
+    // Sanitize user-controlled input
+    intent.description = sanitizeUserInput(intent.description, 10_000);
 
     consola.info(
       `Parsed intent: ${intent.isApproval ? "approval (finalise plan)" : intent.isFeedback ? "refinement feedback" : intent.command}${intent.fullFlow ? " (full flow)" : ""}`,
@@ -192,7 +223,6 @@ export const actionCommand = defineCommand({
     }
 
     // Post a thinking placeholder comment
-    const commandLabel = intent.isApproval ? "plan" : (intent.isFeedback && isPostImplementation) ? "implement" : intent.isFeedback ? "feedback" : intent.command;
     let placeholderCommentId: number | null = null;
     if (repo && issueNumber) {
       const thinkingBody = `<h3>🧠 Jedi <sup>thinking</sup></h3>\n\n---\n\n_Working on it..._`;
@@ -201,28 +231,14 @@ export const actionCommand = defineCommand({
 
     // Approval: lightweight confirmation — no Claude invocation needed
     if (intent.isFeedback && intent.isApproval) {
-      // Update state.yaml directly
-      const { existsSync } = await import("fs");
-      const { join } = await import("path");
-      const statePath = join(cwd, ".jdi/config/state.yaml");
-
-      if (existsSync(statePath)) {
-        const stateContent = await Bun.file(statePath).text();
-        const now = new Date().toISOString();
-        // Update or add review status fields
-        let updated = stateContent;
-        if (/review\.status:/.test(updated)) {
-          updated = updated.replace(/review\.status:\s*.+/, `review.status: approved`);
-        } else {
-          updated += `\nreview.status: approved\n`;
-        }
-        if (/review\.approved_at:/.test(updated)) {
-          updated = updated.replace(/review\.approved_at:\s*.+/, `review.approved_at: ${now}`);
-        } else {
-          updated += `review.approved_at: ${now}\n`;
-        }
-        await Bun.write(statePath, updated);
-      }
+      // Update state.yaml using proper YAML parser
+      const state = await readState(cwd) ?? {};
+      state.review = {
+        ...state.review,
+        status: "approved",
+        approved_at: new Date().toISOString(),
+      } as any;
+      await writeState(cwd, state);
 
       const approvalBody = `Plan approved and locked in.\n\nSay **\`Hey Jedi implement\`** when you're ready to go.`;
       const finalBody = formatJediComment("plan", approvalBody);
@@ -350,10 +366,10 @@ export const actionCommand = defineCommand({
         ``,
         ...contextLines,
         ``,
-        conversationHistory,
+        fenceUserInput("conversation-history", conversationHistory),
         ``,
         `## Feedback on Implementation`,
-        `> ${intent.description}`,
+        fenceUserInput("user-request", intent.description),
         ``,
         `## Instructions`,
         `The user is iterating on code that Jedi already implemented. Review the conversation above to understand what was built.`,
@@ -378,10 +394,10 @@ export const actionCommand = defineCommand({
         ``,
         ...contextLines,
         ``,
-        conversationHistory,
+        fenceUserInput("conversation-history", conversationHistory),
         ``,
         `## Refinement Feedback`,
-        `> ${intent.description}`,
+        fenceUserInput("user-request", intent.description),
         ``,
         `## HARD CONSTRAINTS — PLAN REFINEMENT MODE`,
         `- ONLY modify files under \`.jdi/plans/\` and \`.jdi/config/\` — NEVER create, edit, or delete source code files`,
@@ -405,7 +421,7 @@ export const actionCommand = defineCommand({
       // Include conversation history as context even for new commands,
       // so the agent is aware of any prior work on this issue
       const historyBlock = conversationHistory
-        ? `\n${conversationHistory}\n\nThe above is prior conversation on this issue for context.\n`
+        ? `\n${fenceUserInput("conversation-history", conversationHistory)}\n\nThe above is prior conversation on this issue for context.\n`
         : "";
 
       switch (intent.command) {
@@ -417,7 +433,8 @@ export const actionCommand = defineCommand({
             ...contextLines,
             historyBlock,
             `## Task`,
-            `Create an implementation plan for: ${intent.description}`,
+            `Create an implementation plan for:`,
+            fenceUserInput("user-request", intent.description),
             ticketContext
               ? `\nUse the ClickUp ticket above as the primary requirements source.`
               : ``,
@@ -502,7 +519,8 @@ export const actionCommand = defineCommand({
             ...contextLines,
             historyBlock,
             `## Task`,
-            `Make this quick change: ${intent.description}`,
+            `Make this quick change:`,
+            fenceUserInput("user-request", intent.description),
             `Keep changes minimal and focused.`,
             ``,
             `## Auto-Commit`,
@@ -549,6 +567,11 @@ export const actionCommand = defineCommand({
       }
     }
 
+    // Apply dry-run mode if requested
+    if (intent.dryRun) {
+      prompt = applyDryRunMode(prompt);
+    }
+
     // Execute
     let success = true;
     let fullResponse = "";
@@ -556,6 +579,7 @@ export const actionCommand = defineCommand({
       const { exitCode, response } = await spawnClaude(prompt, {
         cwd,
         permissionMode: "bypassPermissions",
+        allowedTools: intent.dryRun ? ["Read", "Glob", "Grep", "Bash"] : undefined,
       });
       fullResponse = response;
       if (exitCode !== 0) {
@@ -596,6 +620,14 @@ export const actionCommand = defineCommand({
         // Append implementation response
         if (implResult.response) {
           fullResponse += "\n\n---\n\n" + implResult.response;
+        }
+
+        // Run quality gates after full-flow implementation
+        if (!intent.dryRun) {
+          const verification = await runQualityGates(cwd);
+          if (verification.gates.length > 0) {
+            fullResponse += "\n\n" + formatVerificationResults(verification);
+          }
         }
       }
     } catch (err) {

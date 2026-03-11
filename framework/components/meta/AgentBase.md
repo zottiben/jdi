@@ -6,7 +6,7 @@ Standards inherited by all JDI agents via `<JDI:AgentBase />`. Default loads Cor
 
 - Use **Australian English** spelling in all outputs.
 - Follow `CLAUDE.md` and `.claude/rules/` conventions.
-- Read `.jdi/config/state.yaml` once at task start — update `position`, `progress`, `current_plan` fields via `<JDI:StateUpdate />`.
+- Read `.jdi/config/state.yaml` once at task start for context. Do NOT update state.yaml for status transitions — the framework handles this. Only use state.yaml to record decisions, deviations, or blockers via `<JDI:StateUpdate />`.
 - Use the Read tool before editing any file.
 - Batch file reads: issue all Read calls in a single turn rather than sequentially.
 - Batch git operations: combine related commands into a single Bash call where possible.

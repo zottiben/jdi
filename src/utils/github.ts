@@ -59,8 +59,7 @@ export async function fetchCommentThread(
 ): Promise<ThreadComment[]> {
   const { stdout, exitCode } = await exec([
     "gh", "api",
-    `repos/${repo}/issues/${issueNumber}/comments`,
-    "--paginate",
+    `repos/${repo}/issues/${issueNumber}/comments?per_page=100`,
     "--jq",
     `.[] | {id: .id, author: .user.login, body: .body, createdAt: .created_at}`,
   ]);
@@ -85,7 +84,30 @@ export async function fetchCommentThread(
     }
   }
 
-  return comments;
+  // Keep only the most recent 100 comments
+  return comments.slice(-100);
+}
+
+/**
+ * Format verification results as a collapsible markdown section.
+ */
+export function formatVerificationResults(results: { passed: boolean; gates: Array<{ name: string; command: string; passed: boolean; output: string }> }): string {
+  const icon = results.passed ? "✅" : "❌";
+  const status = results.passed ? "All gates passed" : "Some gates failed";
+  const rows = results.gates.map((g) => {
+    const gateIcon = g.passed ? "✅" : "❌";
+    const output = g.output.trim() ? `\n<pre>${g.output.trim().slice(0, 500)}</pre>` : "";
+    return `${gateIcon} **${g.name}** — \`${g.command}\`${output}`;
+  }).join("\n\n");
+
+  return [
+    `<details>`,
+    `<summary>${icon} Quality Gates — ${status}</summary>`,
+    ``,
+    rows,
+    ``,
+    `</details>`,
+  ].join("\n");
 }
 
 /**

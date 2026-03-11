@@ -1,9 +1,8 @@
 import { defineCommand } from "citty";
 import { consola } from "consola";
 import { resolve } from "path";
-import { detectProjectType } from "../utils/detect-project";
-import { readAdapter } from "../utils/adapter";
 import { spawnClaude } from "../utils/claude";
+import { gatherPromptContext, buildQuickPrompt, applyDryRunMode } from "../utils/prompt-builder";
 
 export const quickCommand = defineCommand({
   meta: {
@@ -25,39 +24,20 @@ export const quickCommand = defineCommand({
       description: "Print the prompt to stdout instead of executing",
       default: false,
     },
+    "dry-run": {
+      type: "boolean",
+      description: "Preview changes without writing files",
+      default: false,
+    },
   },
   async run({ args }) {
     const cwd = process.cwd();
-    const projectType = await detectProjectType(cwd);
-    const adapter = await readAdapter(cwd);
+    const ctx = await gatherPromptContext(cwd);
 
-    const qualityGates = adapter?.quality_gates
-      ? Object.entries(adapter.quality_gates)
-          .map(([name, cmd]) => `- ${name}: \`${cmd}\``)
-          .join("\n")
-      : "- Run any existing test suite";
-
-    const prompt = [
-      `# Quick Change`,
-      ``,
-      `## Task`,
-      `${args.description}`,
-      ``,
-      `## Context`,
-      `- Working directory: ${cwd}`,
-      `- Project type: ${projectType}`,
-      ``,
-      `## Instructions`,
-      `1. Make the minimal change needed to accomplish the task`,
-      `2. Keep changes focused — do not refactor surrounding code`,
-      `3. Follow existing code patterns and conventions`,
-      ``,
-      `## Verification`,
-      qualityGates,
-      ``,
-      `## Commit`,
-      `When done, create a conventional commit describing the change.`,
-    ].join("\n");
+    let prompt = buildQuickPrompt(ctx, args.description);
+    if (args["dry-run"]) {
+      prompt = applyDryRunMode(prompt);
+    }
 
     if (args.output) {
       await Bun.write(resolve(cwd, args.output), prompt);
@@ -65,7 +45,8 @@ export const quickCommand = defineCommand({
     } else if (args.print) {
       console.log(prompt);
     } else {
-      const { exitCode } = await spawnClaude(prompt, { cwd });
+      const allowedTools = args["dry-run"] ? ["Read", "Glob", "Grep", "Bash"] : undefined;
+      const { exitCode } = await spawnClaude(prompt, { cwd, allowedTools });
       if (exitCode !== 0) {
         consola.error(`Claude exited with code ${exitCode}`);
         process.exit(exitCode);

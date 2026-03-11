@@ -7,6 +7,8 @@ description: "JDI: Execute implementation plan"
 
 Execute a PLAN.md with complexity-based routing.
 
+**Flags:** `--team` (force Agent Teams) | `--single` (force single agent) | `--dry-run` (preview without writing)
+
 > **Do NOT use the built-in `EnterWorktree` tool.** If `state.yaml` has `worktree.active: true`, just `cd` into `worktree.path`.
 
 ## Orchestration

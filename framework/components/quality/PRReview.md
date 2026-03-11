@@ -92,7 +92,7 @@ If `post="false"`: note output will go to `.jdi/reviews/PR-[number]-review.md`.
 
 ### Step 8a: After "continue":
 - `post="true"` (default): Continue to Step 9
-- `post="false"`: Execute `<JDI:PRReviewLocal />`, skip to Step 11
+- `post="false"`: Execute the LocalOutput section below, skip to Step 11
 
 ### Steps 9-10: Build & Submit Review (post=true only)
 
@@ -192,5 +192,23 @@ EOF
 ```
 
 **CHECKPOINT** — Wait for "post" or "cancel" before posting.
+
+</section>
+
+---
+
+<section name="LocalOutput">
+
+## Local Review Output
+
+When `post="false"` or invoked with `<JDI:PRReview post="false" />`:
+
+Skip Steps 9-10 (posting to GitHub). Instead, write the full structured review to a file:
+
+1. **Create the directory** if it does not exist: `mkdir -p .jdi/reviews`
+2. **Write** to `.jdi/reviews/PR-{pr_number}-review.md` with frontmatter (pr, title, author, branch, url, reviewed_at, verdict, findings counts) followed by: Summary, Findings (organised by severity highest to lowest), and Checklist.
+3. **Confirm**: Output the file path, finding counts, and verdict.
+
+Then proceed to Step 11 (return to master).
 
 </section>

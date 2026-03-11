@@ -1,12 +1,13 @@
 import { defineCommand } from "citty";
 import { consola } from "consola";
 import { resolve } from "path";
-import { detectProjectType } from "../utils/detect-project";
-import { readAdapter } from "../utils/adapter";
 import { spawnClaude } from "../utils/claude";
 import { readState } from "../utils/state";
 import { createStorage } from "../storage";
-import { loadPersistedState, savePersistedState } from "../utils/storage-lifecycle";
+import { savePersistedState } from "../utils/storage-lifecycle";
+import { gatherPromptContext, buildImplementPrompt, applyDryRunMode } from "../utils/prompt-builder";
+import { transitionToExecuting, transitionToComplete } from "../utils/state-handlers";
+import { runQualityGates } from "../utils/verify";
 
 export const implementCommand = defineCommand({
   meta: {
@@ -38,15 +39,20 @@ export const implementCommand = defineCommand({
       description: "Force single-agent mode",
       default: false,
     },
+    "dry-run": {
+      type: "boolean",
+      description: "Preview changes without writing files",
+      default: false,
+    },
   },
   async run({ args }) {
     const cwd = process.cwd();
 
     // Auto-discover plan from state if not provided
-    let planPath = args.plan;
+    let planPath: string | undefined = args.plan;
     if (!planPath) {
       const state = await readState(cwd);
-      planPath = state?.current_plan?.path ?? null;
+      planPath = state?.current_plan?.path ?? undefined;
       if (!planPath) {
         consola.error("No plan specified and no current plan found in state. Run `jdi plan` first or provide a plan path.");
         process.exit(1);
@@ -54,48 +60,14 @@ export const implementCommand = defineCommand({
       consola.info(`Using current plan: ${planPath}`);
     }
 
-    const baseProtocol = resolve(cwd, ".jdi/framework/components/meta/AgentBase.md");
-    const complexityRouter = resolve(cwd, ".jdi/framework/components/meta/ComplexityRouter.md");
-    const orchestration = resolve(cwd, ".jdi/framework/components/meta/AgentTeamsOrchestration.md");
+    const ctx = await gatherPromptContext(cwd);
+    const overrideFlag = args.team ? "--team (force Agent Teams mode)" :
+      args.single ? "--single (force single-agent mode)" : undefined;
 
-    // Gather project context upfront (saves agent 2-3 discovery tool calls)
-    const projectType = await detectProjectType(cwd);
-    const adapter = await readAdapter(cwd);
-    const techStack = adapter?.tech_stack
-      ? Object.entries(adapter.tech_stack).map(([k, v]) => `${k}: ${v}`).join(", ")
-      : projectType;
-    const qualityGates = adapter?.quality_gates
-      ? Object.entries(adapter.quality_gates).map(([name, cmd]) => `${name}: \`${cmd}\``).join(", ")
-      : "default";
-
-    const overrideFlag = args.team ? "\nOverride: --team (force Agent Teams mode)" :
-      args.single ? "\nOverride: --single (force single-agent mode)" : "";
-
-    // Build spawn prompt (cache-optimised: AgentBase first, then routing, then dynamic)
-    const prompt = [
-      `Read ${baseProtocol} for the base agent protocol.`,
-      `Read ${complexityRouter} for complexity routing rules.`,
-      `Read ${orchestration} for Agent Teams orchestration (if needed).`,
-      ``,
-      `## Project Context`,
-      `- Type: ${projectType}`,
-      `- Tech stack: ${techStack}`,
-      `- Quality gates: ${qualityGates}`,
-      `- Working directory: ${cwd}`,
-      ``,
-      `## Task`,
-      `Execute implementation plan: ${resolve(cwd, planPath)}${overrideFlag}`,
-      ``,
-      `Follow the implement-plan orchestration:`,
-      `1. Read codebase context (.jdi/codebase/SUMMARY.md if exists)`,
-      `2. Read plan file and state.yaml — parse tasks, deps, waves, tech_stack`,
-      `3. Apply ComplexityRouter: evaluate plan signals, choose single-agent or Agent Teams mode`,
-      `4. Tech routing: detect primary agent from tech stack`,
-      `5. Spawn agent(s) with cache-optimised load order (AgentBase first, then agent spec)`,
-      `6. Collect and execute deferred ops (files, commits)`,
-      `7. Run verification (tests, lint, typecheck)`,
-      `8. Update state, present summary, enter review loop`,
-    ].join("\n");
+    let prompt = buildImplementPrompt(ctx, planPath, overrideFlag);
+    if (args["dry-run"]) {
+      prompt = applyDryRunMode(prompt);
+    }
 
     if (args.output) {
       await Bun.write(resolve(cwd, args.output), prompt);
@@ -103,13 +75,27 @@ export const implementCommand = defineCommand({
     } else if (args.print) {
       console.log(prompt);
     } else {
-      // Load persisted state before spawning agent
-      const storage = await createStorage(cwd);
-      await loadPersistedState(cwd, storage);
+      await transitionToExecuting(cwd);
 
-      const { exitCode } = await spawnClaude(prompt, { cwd });
+      const allowedTools = args["dry-run"] ? ["Read", "Glob", "Grep", "Bash"] : undefined;
+      const { exitCode } = await spawnClaude(prompt, { cwd, allowedTools });
+
+      await transitionToComplete(cwd);
+
+      // Run quality gates after implementation
+      if (!args["dry-run"]) {
+        const verification = await runQualityGates(cwd);
+        if (verification.gates.length > 0) {
+          consola.info("\nQuality Gates:");
+          for (const gate of verification.gates) {
+            const icon = gate.passed ? "✅" : "❌";
+            consola.info(`  ${icon} ${gate.name}`);
+          }
+        }
+      }
 
       // Save any updates back to storage
+      const storage = await createStorage(cwd);
       await savePersistedState(cwd, storage);
 
       if (exitCode !== 0) {

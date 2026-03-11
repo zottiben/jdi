@@ -17,7 +17,11 @@ const CLICKUP_URL_PATTERNS = [
 export function extractClickUpId(text: string): string | null {
   for (const pattern of CLICKUP_URL_PATTERNS) {
     const match = text.match(pattern);
-    if (match) return match[1];
+    if (match) {
+      const id = match[1];
+      if (id.length > 20) return null;
+      return id;
+    }
   }
   return null;
 }

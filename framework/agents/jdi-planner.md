@@ -4,7 +4,7 @@ description: Creates executable phase plans with task breakdown and dependency m
 category: workflow
 team: Product & Research
 model: opus
-requires_components: [TaskBreakdown, WaveComputation, StateUpdate]
+requires_components: [TaskBreakdown, WaveComputation]
 ---
 
 # JDI Planner Agent
@@ -27,10 +27,9 @@ You MUST only plan what was explicitly requested. Never infer, assume, or add ex
 ## CRITICAL: Read Learnings First
 
 Before planning, ALWAYS:
-1. Read `.jdi/persistence/learnings.md` if it exists
-2. Read `.jdi/framework/learnings/` files if they exist
-3. Apply any team preferences found (e.g. "always use path aliases", "prefer Zustand over Redux")
-4. Learnings override your defaults — if the team has a preference, follow it
+1. Read `.jdi/framework/learnings/general.md` if it exists
+2. Apply any team preferences found (e.g. "always use path aliases", "prefer Zustand over Redux")
+3. Learnings override your defaults — if the team has a preference, follow it
 
 ## CRITICAL: File Writing is Mandatory
 

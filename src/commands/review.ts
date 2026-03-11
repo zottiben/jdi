@@ -3,6 +3,7 @@ import { consola } from "consola";
 import { resolve } from "path";
 import { exec } from "../utils/git";
 import { spawnClaude } from "../utils/claude";
+import { buildReviewPrompt } from "../utils/prompt-builder";
 
 export const reviewCommand = defineCommand({
   meta: {
@@ -61,45 +62,12 @@ export const reviewCommand = defineCommand({
       }
     }
 
-    const prompt = [
-      `# Code Review: PR #${prNum}`,
-      ``,
+    const prompt = buildReviewPrompt(
+      { cwd: process.cwd(), projectType: "", techStack: "", qualityGates: "", learningsPath: null, codebaseIndexPath: null, adapter: null },
+      String(prNum),
       meta,
-      ``,
-      `## Diff`,
-      "```diff",
       diffResult.stdout,
-      "```",
-      ``,
-      `## Review Checklist`,
-      `Evaluate this PR against the following criteria:`,
-      ``,
-      `### Correctness`,
-      `- Does the code do what it claims to do?`,
-      `- Are there edge cases not handled?`,
-      `- Are error paths handled properly?`,
-      ``,
-      `### Patterns & Conventions`,
-      `- Does it follow the project's existing patterns?`,
-      `- Are naming conventions consistent?`,
-      `- Is the code well-organised?`,
-      ``,
-      `### Security`,
-      `- Any injection risks (SQL, XSS, command)?`,
-      `- Are secrets or credentials exposed?`,
-      `- Is user input validated at boundaries?`,
-      ``,
-      `### Performance`,
-      `- Any N+1 queries or unnecessary loops?`,
-      `- Are there missing indexes or inefficient operations?`,
-      ``,
-      `## Output Format`,
-      `For each finding, provide:`,
-      `- **File & line**: where the issue is`,
-      `- **Severity**: critical / warning / suggestion / nitpick`,
-      `- **Issue**: what's wrong`,
-      `- **Suggestion**: how to fix it`,
-    ].join("\n");
+    );
 
     if (args.output) {
       await Bun.write(resolve(process.cwd(), args.output), prompt);

@@ -63,47 +63,20 @@ export async function copyFrameworkFiles(
   const claudeDir = join(cwd, ".claude");
   if (!existsSync(claudeDir)) mkdirSync(claudeDir, { recursive: true });
 
+  // Read the shared CLAUDE.md base template
+  const sharedTemplatePath = join(frameworkDir, "templates", "CLAUDE-SHARED.md");
+  const sharedBase = existsSync(sharedTemplatePath)
+    ? await Bun.file(sharedTemplatePath).text()
+    : "";
+
   if (ci) {
-    // CI mode: full framework instructions for GitHub Action (no skills available)
-    await Bun.write(claudeMdPath, `# Jedi AI Development Framework
-
-You are Jedi, an AI development framework that uses specialised agents to plan, implement, review, and ship features.
-
-## Identity
-
-You are **Jedi**, not Claude. Always refer to yourself as "Jedi" in your responses.
-Use "Jedi" in summaries and status updates (e.g. "Jedi has completed..." not "Claude has completed...").
-Do not add a signature line — the response is already branded by the Jedi CLI.
-Never include meta-commentary about agent activation (e.g. "You are now active as jdi-planner" or "Plan created as requested"). Just give the response directly.
-
-## Framework
-
-Read \`.jdi/framework/components/meta/AgentBase.md\` for the base agent protocol.
-Your framework files are in \`.jdi/framework/\` — agents, components, learnings, and teams.
-Your state is tracked in \`.jdi/config/state.yaml\`.
-Plans live in \`.jdi/plans/\`.
-
-## Learnings
-
-IMPORTANT: Always read learnings BEFORE starting any work.
-Check \`.jdi/persistence/learnings.md\` for accumulated team learnings and preferences.
-Check \`.jdi/framework/learnings/\` for categorised learnings (backend, frontend, testing, devops, general).
-These learnings represent the team's coding standards — follow them.
-When you learn something new from a review or feedback, update the appropriate learnings file
-AND write the consolidated version to \`.jdi/persistence/learnings.md\`.
-
+    // CI mode: shared base + CI-specific sections
+    const ciSections = `
 ## Codebase Index
 
 Check \`.jdi/persistence/codebase-index.md\` for an indexed representation of the codebase.
 If it exists, use it for faster navigation. If it doesn't, consider generating one
 and saving it to \`.jdi/persistence/codebase-index.md\` for future runs.
-
-## Scope Discipline
-
-Only do what was explicitly requested. Do not add extras, tooling, or features the user did not ask for.
-If something is ambiguous, ask — do not guess.
-NEVER use time estimates (minutes, hours, etc). Use S/M/L t-shirt sizing for all task and plan sizing.
-Follow response templates exactly as instructed in the prompt — do not improvise the layout or structure.
 
 ## Workflow Routing
 
@@ -115,12 +88,6 @@ Based on the user's request, follow the appropriate workflow:
 - **Review** ("review"): Review PR changes using \`.jdi/framework/components/quality/PRReview.md\`.
 - **PR feedback** ("feedback"): Address review comments using \`.jdi/framework/agents/jdi-pr-feedback.md\`. Extract learnings from reviewer preferences.
 - **"do" + ClickUp URL**: Full flow — plan from ticket, then implement.
-
-## Approval Gate
-
-Planning and implementation are separate gates — NEVER auto-proceed to implementation after planning or plan refinement.
-When the user provides refinement feedback on a plan, ONLY update the plan files in \`.jdi/plans/\`. Do NOT implement code.
-Implementation only happens when the user explicitly approves ("approved", "lgtm", "looks good", "ship it") or explicitly requests implementation ("implement", "build", "execute").
 
 ## Auto-Commit (CI Mode)
 
@@ -145,7 +112,8 @@ If the user provides a ClickUp URL, fetch the ticket details:
 curl -s -H "Authorization: $CLICKUP_API_TOKEN" "https://api.clickup.com/api/v2/task/{task_id}"
 \`\`\`
 Use the ticket name, description, and checklists as requirements.
-`);
+`;
+    await Bun.write(claudeMdPath, sharedBase + "\n" + ciSections);
   } else {
     // Local mode: skill routing for Claude Code CLI
     const routingHeader = "## JDI Workflow Routing";

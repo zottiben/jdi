@@ -178,7 +178,7 @@ When initialised in a project (`.jdi/`):
 | `PROJECT.yaml` | Project vision and constraints |
 | `REQUIREMENTS.yaml` | Scoped requirements with REQ-IDs |
 | `ROADMAP.yaml` | Phase structure |
-| `STATE.md` | Living memory across sessions |
+| `state.yaml` | Runtime state (position, session, decisions, blockers) |
 
 ---
 

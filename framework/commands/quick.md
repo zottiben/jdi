@@ -7,6 +7,8 @@ description: "JDI: Quick focused change"
 
 Execute a small, focused change directly without full orchestration.
 
+**Flags:** `--dry-run` (preview without writing files)
+
 ## Direct Execution
 
 1. Parse task from $ARGUMENTS
