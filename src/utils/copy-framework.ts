@@ -124,11 +124,11 @@ Implementation only happens when the user explicitly approves ("approved", "lgtm
 
 ## Auto-Commit (CI Mode)
 
-You are running inside a GitHub Action on a PR branch. After **implementing** changes (NOT after planning or plan refinement):
-1. Stage all changed files with \`git add\` (only source files you changed — NOT .jdi/ or .claude/)
-2. Commit with a conventional commit message (e.g. "feat: implement X")
-3. Push to the current branch with \`git push\`
-Do NOT ask the user whether to commit — just do it. The user will review the PR diff directly.
+You are already on the correct PR branch. Do NOT create new branches or switch branches.
+After **implementing** changes (NOT after planning or plan refinement):
+1. \`git add\` only source files you changed (NOT .jdi/ or .claude/)
+2. \`git commit -m "feat: ..."\` with a conventional commit message
+3. \`git push\` (no -u, no origin, no branch name — just \`git push\`)
 Plan files (\`.jdi/plans/\`) are cached separately and should NOT be committed.
 
 ## Iterative Refinement
