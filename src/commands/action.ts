@@ -157,6 +157,7 @@ export const actionCommand = defineCommand({
     // Fetch comment thread to detect if this is a follow-up conversation
     let conversationHistory = "";
     let isFollowUp = false;
+    let isPostImplementation = false;
     if (repo && issueNumber) {
       const thread = await fetchCommentThread(repo, issueNumber);
       const context = buildConversationContext(
@@ -165,10 +166,11 @@ export const actionCommand = defineCommand({
       );
       conversationHistory = context.history;
       isFollowUp = context.isFollowUp;
+      isPostImplementation = context.isPostImplementation;
 
       if (isFollowUp) {
         consola.info(
-          `Continuing conversation (${context.previousJediRuns} previous Jedi run(s))`,
+          `Continuing conversation (${context.previousJediRuns} previous Jedi run(s))${isPostImplementation ? " [post-implementation]" : ""}`,
         );
       }
     }
@@ -190,7 +192,7 @@ export const actionCommand = defineCommand({
     }
 
     // Post a thinking placeholder comment
-    const commandLabel = intent.isApproval ? "plan" : intent.isFeedback ? "feedback" : intent.command;
+    const commandLabel = intent.isApproval ? "plan" : (intent.isFeedback && isPostImplementation) ? "implement" : intent.isFeedback ? "feedback" : intent.command;
     let placeholderCommentId: number | null = null;
     if (repo && issueNumber) {
       const thinkingBody = `<h3>🧠 Jedi <sup>thinking</sup></h3>\n\n---\n\n_Working on it..._`;
@@ -313,6 +315,31 @@ export const actionCommand = defineCommand({
         ``,
         `Respond with a short confirmation that the plan is approved and ready, then ask:`,
         `"Say **implement** when you're ready to go."`,
+      ].join("\n");
+    } else if (intent.isFeedback && isPostImplementation) {
+      // ── Post-implementation iteration — allow code changes, commit, push ──
+      prompt = [
+        `Read ${baseProtocol} for the base agent protocol.`,
+        ``,
+        ...contextLines,
+        ``,
+        conversationHistory,
+        ``,
+        `## Feedback on Implementation`,
+        `> ${intent.description}`,
+        ``,
+        `## Instructions`,
+        `The user is iterating on code that Jedi already implemented. Review the conversation above to understand what was built.`,
+        `Be conversational — if the user asks a question, answer it first. Then make changes if needed.`,
+        `Apply changes incrementally to the existing code — do not rewrite from scratch.`,
+        ``,
+        `## Auto-Commit`,
+        `You are already on the correct PR branch. Do NOT create new branches or switch branches.`,
+        `After making changes:`,
+        `1. \`git add\` only source files you changed (NOT .jdi/ or .claude/)`,
+        `2. \`git commit -m "fix: ..."\` or \`git commit -m "refactor: ..."\` with a conventional commit message`,
+        `3. \`git push\` (no -u, no origin, no branch name — just \`git push\`)`,
+        `Present a summary of what you changed.`,
       ].join("\n");
     } else if (intent.isFeedback) {
       // ── Refinement — update the plan only, NEVER implement ──

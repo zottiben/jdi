@@ -95,7 +95,7 @@ export async function fetchCommentThread(
 export function buildConversationContext(
   thread: ThreadComment[],
   currentCommentId: number,
-): { history: string; previousJediRuns: number; isFollowUp: boolean } {
+): { history: string; previousJediRuns: number; isFollowUp: boolean; isPostImplementation: boolean } {
   // Filter to only Jedi-related comments (commands, responses, feedback between them)
   const jediSegments: ThreadComment[] = [];
   let inJediConversation = false;
@@ -121,8 +121,13 @@ export function buildConversationContext(
   // Determine if this is a follow-up to an existing Jedi conversation
   const isFollowUp = previousJediRuns > 0;
 
+  // Detect if implementation has already happened (Jedi posted an "implement" response)
+  const isPostImplementation = jediSegments.some(
+    (c) => c.isJedi && c.body.includes("<sup>implement</sup>"),
+  );
+
   if (jediSegments.length === 0) {
-    return { history: "", previousJediRuns: 0, isFollowUp: false };
+    return { history: "", previousJediRuns: 0, isFollowUp: false, isPostImplementation: false };
   }
 
   // Format as conversation log
@@ -139,7 +144,7 @@ export function buildConversationContext(
     lines.push("");
   }
 
-  return { history: lines.join("\n"), previousJediRuns, isFollowUp };
+  return { history: lines.join("\n"), previousJediRuns, isFollowUp, isPostImplementation };
 }
 
 const COMMAND_EMOJI: Record<string, string> = {
