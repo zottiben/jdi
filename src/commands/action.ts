@@ -78,6 +78,12 @@ function parseComment(
 
   const base = { clickUpUrl, fullFlow: false, isFeedback: false, isApproval: false, dryRun: hasDryRun };
 
+  // "approved" / "lgtm" / "looks good" — explicit approval (does NOT trigger implementation)
+  // Must be checked BEFORE command prefixes so "plan approved" is treated as approval, not a new plan.
+  if (/\b(approved?|lgtm|looks?\s*good|ship\s*it)\b/i.test(lower)) {
+    return { ...base, command: "plan", description: body, clickUpUrl: null, isFeedback: true, isApproval: true };
+  }
+
   // Explicit commands always start a new workflow
   if (lower.startsWith("ping") || lower.startsWith("status")) {
     return { ...base, command: "ping", description: "", clickUpUrl: null };
@@ -104,12 +110,6 @@ function parseComment(
       return { ...base, command: "plan", description, fullFlow: true };
     }
     return { ...base, command: "quick", description };
-  }
-
-  // "approved" / "lgtm" / "looks good" — explicit approval (does NOT trigger implementation)
-  // Match anywhere in the message (word boundary) to catch e.g. "Im happy with this plan. Approved."
-  if (/\b(approved?|lgtm|looks?\s*good|ship\s*it)\b/i.test(lower)) {
-    return { ...base, command: "plan", description: body, clickUpUrl: null, isFeedback: true, isApproval: true };
   }
 
   // If there's an existing conversation, treat ambiguous "Hey Jedi" messages as refinement feedback
