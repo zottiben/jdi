@@ -5,6 +5,13 @@ task_name: {Task Name}
 type: auto
 wave: 1
 depends_on: []
+
+# Agent routing (written by jdi-planner via AgentRouter — see
+# framework/components/meta/AgentRouter.md). implement-plan reads `agent` and
+# passes it as `subagent_type` when spawning via the Task tool. `agent_rationale`
+# is a human-readable justification so reviewers can challenge the pick.
+agent: general-purpose
+agent_rationale: "{Why this specialist was chosen}"
 ---
 
 # Task {n}: {Task Name}

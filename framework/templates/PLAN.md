@@ -30,6 +30,13 @@ tags: [tag1, tag2, tag3]
 tech_stack:
   added: []
   patterns: []
+
+# Agent Routing (populated by jdi-planner via AgentRouter)
+# available_agents is the catalogue discovered from .claude/agents/ at plan time.
+# primary_agent is used by single-agent mode in implement-plan.
+# Per-task agents live in each {slug}.T{n}.md file under `agent:`.
+available_agents: []
+primary_agent: general-purpose
 ---
 
 # Phase {X} Plan {YY}: {Plan Name}

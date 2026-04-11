@@ -4,7 +4,7 @@ description: Creates executable phase plans with task breakdown and dependency m
 category: workflow
 team: Product & Research
 model: opus
-requires_components: [TaskBreakdown, WaveComputation]
+requires_components: [TaskBreakdown, WaveComputation, AgentRouter]
 ---
 
 # JDI Planner Agent
@@ -94,6 +94,28 @@ Never use time estimates. Use S/M/L sizing in task manifests and plan summaries.
 4. Research: standard stack, architecture patterns, common pitfalls
 5. Findings feed directly into planning (no separate RESEARCH.md)
 
+### Step 0a: Agent Discovery (MANDATORY — read AgentRouter first)
+
+<JDI:AgentRouter mode="discover" />
+
+Before breaking down tasks, you MUST enumerate the Claude Code agents
+available to this session by listing `.claude/agents/` (project-local, if it
+exists) and `~/.claude/agents/` (user-global). Read each `.md` file's YAML
+frontmatter and extract `name` and `description`. Project-local agents
+override user-global agents on name collision.
+
+This catalogue is written into the plan index frontmatter as `available_agents`
+and is used in Step 3 to pin each task to a specialist via the `agent:` field
+in its task file frontmatter.
+
+If discovery returns zero specialists (no `.claude/agents/` on either root),
+record `available_agents: []`, set `primary_agent: general-purpose`, and use
+tech-stack defaults. Never silently skip this step — `available_agents` MUST
+appear in the plan index even when empty.
+
+See `.jdi/framework/components/meta/AgentRouter.md` for the full routing tables
+(Unity / Unreal / Godot / non-game).
+
 ### Step 0b: Reference Analysis (when provided)
 
 If the user provides reference PRs, tickets, or example implementations:
@@ -130,7 +152,34 @@ implementation_steps:
 verification:
   - {How to verify completion}
 done_when: {Specific completion criterion}
+agent: {specialist chosen via AgentRouter — e.g. unity-ui-specialist}
+agent_rationale: {One sentence explaining why this specialist is the best fit}
 ```
+
+### Step 3a: Agent Assignment (MANDATORY when available_agents is non-empty)
+
+<JDI:AgentRouter mode="match" />
+
+For every task produced in Step 3, pick exactly one specialist from the
+`available_agents` catalogue discovered in Step 0a. Use the priority hierarchy
+from `AgentRouter.md`:
+
+1. Explicit user instruction
+2. Files touched by the task (path patterns — e.g. `Assets/Scripts/UI/**`)
+3. Task type + tech_stack
+4. Task objective keywords
+5. Checkpoint type (`checkpoint:human-verify` → `qa-tester`)
+6. Tech-stack default
+7. Fallback to `general-purpose`
+
+Write the selection into each task file's frontmatter as `agent:` and a short
+`agent_rationale:` explaining the choice. Also set `primary_agent` in the plan
+index frontmatter to the first task's agent (or the most common one across all
+tasks in single-agent mode).
+
+**Forbidden:** inventing agent names not present in `available_agents`; routing
+a task to an agent whose description clearly does not match (e.g. a shader
+task to `narrative-director`); leaving `agent:` blank when specialists exist.
 
 ### Step 4: Dependency Analysis
 
@@ -181,4 +230,13 @@ task_count: {n}
 overall_size: S | M | L
 wave: {assigned_wave}
 provides: [what this plan delivers]
+available_agents: [list of discovered Claude Code agents with name+description]
+primary_agent: {agent chosen for single-agent mode}
+task_agents:
+  - task_id: T1
+    agent: unity-ui-specialist
+    rationale: "Edits Canvas HUD — UI Toolkit expertise needed"
+  - task_id: T2
+    agent: gameplay-programmer
+    rationale: "Combat state machine work in Assets/Scripts/Combat"
 ```
