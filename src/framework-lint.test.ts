@@ -16,8 +16,8 @@ describe("framework file invariants", () => {
   test("agents/jdi-planner.md contains required directives", () => {
     const content = readFrameworkFile("agents/jdi-planner.md");
 
-    // Must have sandbox override directive (case-sensitive — specific directive)
-    expect(content).toContain("SANDBOX OVERRIDE");
+    // Must have file writing directive (agents need to know they can/must write files)
+    expect(content).toMatch(/file permissions|Write tool|MUST.*write/i);
 
     // Must reference split format
     expect(content).toMatch(/split format|SPLIT FORMAT/i);
