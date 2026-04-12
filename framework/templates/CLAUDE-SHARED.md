@@ -57,4 +57,4 @@ You may only append to `decisions`, `deviations`, or `blockers` arrays in state.
 
 ## Self-Testing (JDI development only)
 
-If the current project is the JDI framework itself (`@benzotti/jedi`), run `bun test` after modifying prompt builders, action commands, or framework files. This catches regressions in split format references, learnings inclusion, and framework invariants.
+If the current project is the JDI framework itself (`@benzotti/jdi`), run `bun test` after modifying prompt builders, action commands, or framework files. This catches regressions in split format references, learnings inclusion, and framework invariants.

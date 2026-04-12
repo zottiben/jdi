@@ -2,7 +2,7 @@
 
 **JDI aka Jedi — Multi-agent development framework for Claude Code — plan, implement, review, and ship with specialist agents and minimal token overhead.**
 
-[![npm version](https://img.shields.io/npm/v/@benzotti/jedi)](https://www.npmjs.com/package/@benzotti/jedi) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/@benzotti/jdi)](https://www.npmjs.com/package/@benzotti/jdi) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 JDI orchestrates specialised agents to plan, implement, review, and ship features — from single-file fixes to full-stack multi-wave implementations. It runs in three modes: **Claude Code app**, **CLI**, and **GitHub Actions**.
 
@@ -41,7 +41,7 @@ JDI runs in three modes with identical capabilities:
 ### Claude Code App
 
 ```bash
-bun install -g @benzotti/jedi
+bun install -g @benzotti/jdi
 jdi init
 ```
 
@@ -56,7 +56,7 @@ Then inside Claude Code:
 ### CLI
 
 ```bash
-bun install -g @benzotti/jedi
+bun install -g @benzotti/jdi
 jdi init
 
 jdi plan "Add user authentication"
@@ -135,7 +135,7 @@ See [GitHub Actions Setup](#github-actions-setup) for details.
 
 ### Installation
 
-Run `jdi setup-action` to generate the workflow file, or manually copy `action/workflow-template.yml` to `.github/workflows/jedi.yml`.
+Run `jdi setup-action` to generate the workflow file, or manually copy `action/workflow-template.yml` to `.github/workflows/jdi.yml`.
 
 ### Required Secrets
 
@@ -148,8 +148,8 @@ Run `jdi setup-action` to generate the workflow file, or manually copy `action/w
 
 | Variable | Description |
 |----------|-------------|
-| `JEDI_AUTH_ENABLED` | Set to `true` to restrict JDI to write collaborators |
-| `JEDI_ALLOWED_USERS` | Comma-separated list of allowed GitHub usernames |
+| `JDI_AUTH_ENABLED` | Set to `true` to restrict JDI to write collaborators |
+| `JDI_ALLOWED_USERS` | Comma-separated list of allowed GitHub usernames |
 
 ### Comment Syntax
 
@@ -371,7 +371,7 @@ quality:
 
 JDI v0.1.30 includes several security hardening measures:
 
-- **Opt-in authorization gate**: Restrict JDI to write collaborators or an explicit allow-list via `JEDI_AUTH_ENABLED` and `JEDI_ALLOWED_USERS` repo variables
+- **Opt-in authorization gate**: Restrict JDI to write collaborators or an explicit allow-list via `JDI_AUTH_ENABLED` and `JDI_ALLOWED_USERS` repo variables
 - **Prompt injection defense**: User input is sanitized (injection preambles stripped) and wrapped in XML fences with untrusted-content warnings
 - **Shell injection prevention**: All workflow arguments are individually quoted — no unquoted variable expansion
 - **Comment pagination limits**: Comment fetching is bounded to 100 items
