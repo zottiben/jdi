@@ -1,7 +1,7 @@
 ---
 name: implement-plan
 description: "JDI: Execute implementation plan"
-allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task
+allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task, AskUserQuestion
 argument-hint: "[--team | --single | --dry-run | --skip-qa]"
 context: |
   !cat .jdi/config/state.yaml 2>/dev/null | head -30
@@ -120,6 +120,27 @@ For split plans, the agent reads task files one at a time via the `file:` field 
 
 **Wave-based execution:** honour `waves:` from the plan frontmatter. Spawn all tasks in wave N in parallel; wait for all returns before starting wave N+1.
 
+### 8a. Blocker Resolution
+
+When an agent returns `status: blocked`:
+
+1. Read the blocker context from the agent's structured return
+   (blocker_reason, blocker_context, suggested_options if any)
+2. Execute `<JDI:InteractiveGate mode="blocker-resolution" />`
+3. Present the blocker to the user via AskUserQuestion:
+   - header: "BLOCKED"
+   - question: "{task_name} is blocked: {blocker_reason}"
+   - options (pick 2-4 based on context):
+     a) Resolve with approach X (if agent suggested options)
+     b) Skip this task and continue
+     c) Modify the task scope
+     d) Halt the plan
+4. Route based on answer:
+   - Resolve: re-spawn the agent with the resolution context
+   - Skip: advance-task with skip status, continue to next
+   - Modify: enter inline edit of the task file, then re-spawn
+   - Halt: stop execution, enter review loop at step 14
+
 ### 9. Advance Task State
 
 After each task's programmer returns successfully, run:
@@ -185,7 +206,8 @@ Pre-written responses for known deviations. When one applies, follow the scripte
 | Plan status is not `approved` | STOP at step 2. Tell the user to approve the plan first. Do NOT force-advance. |
 | Pinned agent not installed | Downgrade to `general-purpose`, record the downgrade, continue. Surface in the final summary. |
 | Task file missing (listed in `task_files:` but not on disk) | STOP. Report the missing file. Do NOT advance state. |
-| Programmer returns with `status: blocked` | HALT the plan. Do NOT advance task state. Surface the blocker to the user and wait. |
+| Programmer returns with `status: blocked` | Enter step 8a (Blocker Resolution). Do NOT advance task state. Present the blocker interactively via AskUserQuestion and route based on user's choice. |
+| Agent suggests resolution options in structured return | Include agent's suggestions as the first AskUserQuestion options in step 8a, before the default options (skip/modify/halt). |
 | QA verification S1 or S2 failure | HALT the plan immediately. Record the failure in state. Wait for user direction before continuing. |
 | Verification gate failure at step 12 | STOP before completing. Report the failure, enter review loop. Do NOT advance state to `complete`. |
 | `--dry-run` with no changes needed | Output "no-op: plan is already at target state" and STOP. |

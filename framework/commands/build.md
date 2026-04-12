@@ -1,7 +1,7 @@
 ---
 name: build
 description: "JDI: Guided setup and state-aware entry point for new and returning users"
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
 argument-hint: "[no arguments]"
 context: |
   !cat .jdi/config/state.yaml 2>/dev/null | head -20
@@ -51,6 +51,19 @@ If NEITHER condition is true, the user is new — proceed to step 3.
 
 Present exactly these four options. Frame them for software projects — no game-specific language, no engine/prototype vocabulary.
 
+**Preferred: AskUserQuestion.** Use AskUserQuestion with:
+- **header:** `STAGE`
+- **question:** `Which of these describes your situation best?`
+- **options:**
+  1. label: `No idea yet` — description: `I want to figure out what to build`
+  2. label: `Vague idea` — description: `I know the problem but not the shape of the solution`
+  3. label: `Clear concept` — description: `I know what I want to build and roughly how`
+  4. label: `Existing work` — description: `There's already code or scaffolding I want to continue from`
+
+The automatic "Other" option covers situations that don't fit. Route based on the selected option — same branch logic as step 4.
+
+**Fallback (if AskUserQuestion is unavailable):** Present as plain markdown instead:
+
 > **Welcome to JDI.**
 >
 > Before I suggest anything, I'd like to understand where you are. Which of these describes your situation best?
@@ -98,7 +111,16 @@ Each branch below is its own script. Follow the one that matches the user's choi
 
 ### 5. Confirm Before Handing Off
 
-After presenting your recommendation, ask this exact question:
+After presenting your recommendation, confirm with the user before proceeding.
+
+**Preferred: AskUserQuestion.** Use AskUserQuestion with:
+- **header:** `NEXT`
+- **question:** `Ready to proceed?`
+- **options:**
+  1. label: `{recommended command}` — description: `Start with the recommended next step`
+  2. label: `Something else` — description: `I want to do something different`
+
+**Fallback (if AskUserQuestion is unavailable):** Ask as plain text instead:
 
 > "Would you like to start with **{recommended command}**, or something else?"
 

@@ -22,7 +22,7 @@ Do not add unrelated extras (tooling, testing, linting, CI) unless the user expl
 2. **DO investigate the full scope of the request.** "Scope discipline" means no unrelated additions — it does NOT mean ignoring requirements that are clearly implied by the request. If the user asks for a UI view with specific columns, you must verify those columns exist in the backend response, and plan to add them if they don't.
 3. **When reference PRs/tickets are provided, analyse them thoroughly.** Read the actual diff, files changed, patterns used, columns/fields added, routes created, and data flow. The user provides reference PRs so you follow the same pattern — extract the full pattern, don't just skim.
 4. **When the user says "backend is already done", verify it.** Read the actual API endpoint, check what fields it returns, and confirm they match the frontend requirements. If there's a gap, include it in the plan.
-5. **Do not make subjective decisions.** If something is ambiguous (e.g. folder structure, routing library, state management), list it as an open question and ask the user — do not guess.
+5. **Do not make subjective decisions.** If something is ambiguous (e.g. folder structure, routing library, state management), list it as an open question and ask the user — do not guess. If pre-answered questions cover a decision point, use the pre-answered value rather than listing it as open.
 6. **Suggest optional additions separately.** After presenting the plan, list 3-5 common additions the user might want. These are suggestions, NOT part of the plan.
 7. **Same request = same plan.** Two identical requests must produce structurally identical plans. Achieve this by following the templates exactly and not improvising.
 
@@ -32,6 +32,22 @@ Before planning, ALWAYS:
 1. Read `.jdi/framework/learnings/general.md` if it exists
 2. Apply any team preferences found (e.g. "always use path aliases", "prefer Zustand over Redux")
 3. Learnings override your defaults — if the team has a preference, follow it
+
+## CRITICAL: Respect Pre-Answered Questions
+
+When the spawn prompt includes a `PRE_ANSWERED_QUESTIONS` block:
+
+1. Parse each question-id and chosen answer
+2. Treat these as settled decisions — do NOT re-ask them
+3. Do NOT surface them as "Open Questions" in the plan
+4. Reference them in relevant task descriptions as
+   "Decision: {question} → {answer} (pre-plan gate)"
+5. Only surface NEW questions that genuinely emerged DURING
+   planning and could not have been anticipated from the
+   feature description alone
+
+Pre-answered questions represent explicit user choices made via
+interactive prompts. Overriding them silently is forbidden.
 
 ## CRITICAL: File Writing is Mandatory
 

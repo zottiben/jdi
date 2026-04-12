@@ -1,7 +1,7 @@
 ---
 name: create-plan
 description: "JDI: Create implementation plan"
-allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task
+allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task, AskUserQuestion
 argument-hint: "<feature to plan> [--worktree | --worktree-lightweight | --status]"
 context: |
   !cat .jdi/config/state.yaml 2>/dev/null | head -25
@@ -12,7 +12,7 @@ context: |
 
 Create an implementation plan using a single planner agent (includes research). Deterministic workflow — every invocation follows the same numbered steps, in order, without skipping.
 
-**This skill follows `<JDI:StrictnessProtocol />` and `<JDI:SilentDiscovery />`. Read those components before executing any step below.**
+**This skill follows `<JDI:StrictnessProtocol />`, `<JDI:SilentDiscovery />`, and `<JDI:InteractiveGate />`. Read those components before executing any step below.**
 
 ---
 
@@ -89,6 +89,30 @@ If the feature description looks trivial (single file, <30 minutes, no architect
 
 **Wait for the user's answer. Do not proceed until they respond.** If they pick quick, STOP — do not spawn the planner.
 
+### 4a. Pre-Plan Research Spawn
+
+Spawn `jdi-researcher` in `pre-plan-discovery` mode via `Task(subagent_type="general-purpose")`. The spawn prompt MUST include:
+
+- The feature description (`$ARGUMENTS`)
+- `PRE_DISCOVERED_CONTEXT` as a YAML block
+- Mode: `--pre-plan-discovery`
+- Spec path: `.jdi/framework/agents/jdi-researcher.md`
+- Instruction: _"Scan the codebase for decision points relevant to this feature. Return RESEARCH_QUESTIONS YAML. Budget: <=15 file reads, <400 word report."_
+
+Store the return as `RESEARCH_DISCOVERY`.
+
+### 4b. Pre-Planning Questions (Interactive Gate)
+
+Execute `<JDI:InteractiveGate mode="pre-plan" />`:
+
+1. Collect surface-level ambiguity questions from the feature description
+2. Collect research-driven questions from `RESEARCH_DISCOVERY.research_questions`
+3. Merge, deduplicate, prioritise (research-driven first)
+4. If questions exist, present via `AskUserQuestion`. Wait for answers.
+5. If zero questions from both sources, skip silently.
+
+Store answers as `PRE_ANSWERED_QUESTIONS`.
+
 ### 5. Spawn Planner
 
 Spawn `jdi-planner` via `Task(subagent_type="general-purpose")`. The spawn prompt MUST include:
@@ -96,7 +120,9 @@ Spawn `jdi-planner` via `Task(subagent_type="general-purpose")`. The spawn promp
 - The feature description (`$ARGUMENTS`)
 - `PRE_DISCOVERED_CONTEXT` as a YAML block — planner must NOT re-read scaffolding
 - `AVAILABLE_AGENTS` catalogue — planner pins specialists via AgentRouter
-- Explicit instruction: _"Do NOT re-prompt the user for anything already in PRE_DISCOVERED_CONTEXT. Surface open questions ONLY for facts you cannot infer."_
+- `PRE_ANSWERED_QUESTIONS` YAML block (from step 4b, if any questions were asked)
+- `RESEARCH_DISCOVERY.research_context` (so the planner doesn't re-scan what the researcher already found)
+- Explicit instruction: _"Do NOT re-prompt the user for anything already in PRE_DISCOVERED_CONTEXT. These questions were already answered by the user — do NOT re-ask them. The research context below summarises what was found in the codebase — use it, don't re-scan. Only surface NEW questions that emerged during planning that could not have been anticipated."_
 - Spec path: `.jdi/framework/agents/jdi-planner.md`
 
 The planner creates split plan files (index `.plan.md` + per-task `.T{n}.md` files) directly via Write tool (sandbox override for plan files). It writes `available_agents:` into the index frontmatter and pins an `agent:` field in every task file.
@@ -156,7 +182,9 @@ Pre-written responses for known deviations. When one applies, follow the scripte
 |-----------|----------|
 | Scaffolding files missing (`.jdi/PROJECT.yaml` etc.) | Planner creates them from `framework/templates/` in step 5. Do NOT ask the user for values the template's defaults cover. |
 | `.claude/agents/` empty on both levels | Set `AVAILABLE_AGENTS = []`, note in summary, and proceed. The planner falls back to tech-stack defaults. |
-| Feature description is vague ("improve X") | Ask 2-3 targeted follow-ups BEFORE spawning the planner. Do not waste a planner invocation on an underspecified prompt. |
+| Feature description is vague ("improve X") | Steps 4a + 4b handle this: the researcher discovers codebase decision points, and the InteractiveGate surfaces ambiguity questions via AskUserQuestion. Do not waste a planner invocation on an underspecified prompt. |
+| Pre-plan researcher returns zero questions | Skip step 4b if surface-level analysis also yields zero questions. Proceed directly to step 5. This is expected for clear features. |
+| Pre-plan researcher returns >4 questions | Batch into multiple AskUserQuestion calls (max 4 per call). Present highest-priority questions first. |
 | Worktree flag but worktree already exists | Ask the user: reuse the existing worktree, or pick a new name? Do not silently proceed. |
 | `--status` with no current plan | Output "No current plan — run `/jdi:create-plan \"<feature>\"` to create one" and STOP. |
 | Planner returns without writing any files | STOP, report the failure, do NOT advance state. Ask the user to re-invoke or debug. |
