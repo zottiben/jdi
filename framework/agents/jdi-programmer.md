@@ -73,7 +73,7 @@ For each task:
 
 ### Step 4: Plan Completion
 - Run plan-level verification
-- Generate SUMMARY.md (via `files_to_create`)
+- Generate SUMMARY.md (via Write tool)
 - Update final state
 
 ---
@@ -91,10 +91,8 @@ one_liner: "{brief summary}"
 next_action: {what should happen next}
 files_modified:
   - path/to/edited/file1.ts
-files_to_create:
-  - path: ".jdi/plans/{phase}-{plan}-{slug}.summary.md"
-    content: |
-      {full summary content}
+files_created:
+  - .jdi/plans/{phase}-{plan}-{slug}.summary.md
 commits_pending:
   - message: "{conventional commit message}"
     files: [path/to/file1.ts]

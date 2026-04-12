@@ -55,47 +55,43 @@ Return a YAML block with `status`, agent-specific fields, and `next_action` afte
 
 <section name="Sandbox">
 
-## Sandbox Awareness
+## File Operations
 
-You run in a sandboxed environment. Key constraints:
+You are spawned with full file permissions (`mode: "bypassPermissions"`). All standard tools work:
 
-| Operation | Tool / Method | Persists? | Notes |
-|-----------|--------------|-----------|-------|
-| Edit existing files | Edit tool | **Yes** | Primary way to modify code |
-| Delete files | Bash `rm` | **Yes** | Destructive — use with care |
-| Create new files | Write tool / Bash `cat >` | **No** | Silently fails — report in `files_to_create` |
-| Git commits | Bash `git commit` | **No** | Silently fails — report in `commits_pending` |
-| Read files | Read tool | **Yes** | Works reliably |
-| Run commands | Bash tool | **Yes** | Output is real; side-effects vary |
+| Operation | Tool / Method | Notes |
+|-----------|--------------|-------|
+| Edit existing files | Edit tool | Primary way to modify code |
+| Create new files | Write tool | Works — create files directly |
+| Delete files | Bash `rm` | Destructive — use with care |
+| Read files | Read tool | Works reliably |
+| Run commands | Bash tool | Output is real; side-effects vary |
 
 **Key Rules:**
-1. **NEVER attempt `git commit`** — it will appear to succeed but produces no real commit.
-2. **NEVER create new files** via Write tool or Bash redirection — they will not persist.
-3. **ALWAYS use the Edit tool** to modify existing files.
-4. **Report pending work** in structured returns using `files_to_create` and `commits_pending`.
+1. **Use the Edit tool** to modify existing files (read first).
+2. **Use the Write tool** to create new files directly — do NOT defer to the orchestrator.
+3. **Do NOT run `git commit`** — the orchestrator handles commits after all tasks complete. Report commits needed in `commits_pending`.
 
-### Structured Returns for Sandbox-Limited Operations
+### Structured Returns
 
 ```yaml
-files_to_create:
-  - path: "path/to/new/file.md"
-    content: |
-      Full file content here...
 files_modified:
   - path/to/edited/file1.ts
+files_created:
+  - path/to/new/file.md
 commits_pending:
   - message: |
       feat(01-01-T1): implement feature X
     files:
       - path/to/modified/file1.ts
+      - path/to/new/file.md
 ```
 
 ### Orchestrator Post-Agent Handling
 
-After a sandboxed agent completes, the orchestrator must:
-1. Create files from `files_to_create` using Write tool
-2. Execute commits from `commits_pending` via `git add` + `git commit`
-3. Record real commit hashes in `.jdi/config/state.yaml`
+After an agent completes, the orchestrator:
+1. Executes commits from `commits_pending` via `git add` + `git commit`
+2. Records real commit hashes in `.jdi/config/state.yaml`
 
 </section>
 
@@ -109,7 +105,7 @@ When operating within an Agent Team (spawned by coordinator):
 
 1. **Claim tasks**: Call TaskList, find tasks assigned to you
 2. **Execute**: Read task description, implement using Edit tool
-3. **Report**: SendMessage to coordinator with structured return (include `files_modified`, `files_to_create`, `commits_pending`)
+3. **Report**: SendMessage to coordinator with structured return (include `files_modified`, `files_created`, `commits_pending`)
 4. **Complete**: TaskUpdate(status: "completed") AFTER sending results
 5. **Next**: Check TaskList for more assigned tasks. If none, go idle.
 

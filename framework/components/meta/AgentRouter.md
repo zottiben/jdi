@@ -212,17 +212,20 @@ correct pattern for that source.
 
 ### Source-aware spawn pattern
 
-| `source` in catalogue | `subagent_type` | Identity mechanism |
-|----------------------|-----------------|--------------------|
-| `jdi` | `"general-purpose"` | Prompt text: `"You are {task.agent}. Read .jdi/framework/agents/{task.agent}.md for instructions."` |
-| `claude-code` | `"{task.agent}"` | Native — Claude Code loads the agent spec from `.claude/agents/` |
+**All agents MUST be spawned with `mode: "bypassPermissions"`** so they can create and edit files without blocking on permission prompts. Agents run in background — they cannot prompt the user for approval.
+
+| `source` in catalogue | `subagent_type` | `mode` | Identity mechanism |
+|----------------------|-----------------|--------|--------------------|
+| `jdi` | `"general-purpose"` | `"bypassPermissions"` | Prompt text: `"You are {task.agent}. Read .jdi/framework/agents/{task.agent}.md for instructions."` |
+| `claude-code` | `"{task.agent}"` | `"bypassPermissions"` | Native — Claude Code loads the agent spec from `.claude/agents/` |
 
 ### Single-agent mode
 
 ```
 # source: jdi (JDI framework specialist)
-Task(
+Agent(
   subagent_type: "general-purpose",
+  mode: "bypassPermissions",
   name: "{plan.primary_agent}",
   prompt: "You are {plan.primary_agent}. Read .jdi/framework/agents/{plan.primary_agent}.md
   for your full role and instructions. Also read .jdi/framework/components/meta/AgentBase.md
@@ -232,8 +235,9 @@ Task(
 )
 
 # source: claude-code (user-added registered specialist)
-Task(
+Agent(
   subagent_type: "{plan.primary_agent}",   # e.g. unity-specialist
+  mode: "bypassPermissions",
   name: "{plan.primary_agent}",
   prompt: "<standard single-agent spawn prompt from ComplexityRouter>"
 )
@@ -246,21 +250,23 @@ fall back to `subagent_type="general-purpose"` with a `jdi-backend` /
 ### Agent-teams mode
 
 For each task, read its `agent:` frontmatter field and the matching `source:`
-from the plan's `available_agents` catalogue. Spawn ONE Task tool call per task
+from the plan's `available_agents` catalogue. Spawn ONE Agent tool call per task
 using the pattern that matches its source (see table above).
 
 ```
 # JDI specialist (source: jdi)
-Task(
+Agent(
   subagent_type: "general-purpose",
+  mode: "bypassPermissions",
   name: "{task.agent}-{task_id}",
   prompt: "You are {task.agent}. Read .jdi/framework/agents/{task.agent}.md for instructions.
   <spawn prompt from AgentTeamsOrchestration with TASK_FILE: {task file}>"
 )
 
 # Claude Code registered specialist (source: claude-code)
-Task(
+Agent(
   subagent_type: "{task.agent}",
+  mode: "bypassPermissions",
   name: "{task.agent}-{task_id}",
   prompt: "<spawn prompt from AgentTeamsOrchestration with TASK_FILE: {task file}>"
 )

@@ -35,21 +35,29 @@ model: opus
 
 ### Correct Pattern
 
-Agent identity is passed via the **prompt parameter**, NOT the `subagent_type` parameter:
+Agent identity is passed via the **prompt parameter**, NOT the `subagent_type` parameter.
+**Permission mode** MUST be `"bypassPermissions"` so agents can create and edit files without blocking on approval prompts.
 
 ```
-Task(
+Agent(
   prompt="You are jdi-programmer. Read .jdi/framework/agents/jdi-programmer.md for instructions. Execute: {task}",
-  subagent_type="general-purpose"   ← MUST be "general-purpose"
+  subagent_type="general-purpose",  ← MUST be "general-purpose"
+  mode="bypassPermissions"          ← REQUIRED: agents need file write permissions
 )
 ```
 
-### Incorrect Pattern (WILL FAIL)
+### Incorrect Patterns (WILL FAIL)
 
 ```
-Task(
+Agent(
   prompt="Execute the plan...",
   subagent_type="jdi-programmer"    ← WRONG: Causes classifyHandoffIfNeeded error
+)
+
+Agent(
+  prompt="Execute the plan...",
+  subagent_type="general-purpose"
+  # mode omitted                    ← WRONG: Agent blocked on Write/Edit permissions
 )
 ```
 

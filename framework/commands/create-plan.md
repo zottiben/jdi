@@ -91,7 +91,7 @@ If the feature description looks trivial (single file, <30 minutes, no architect
 
 ### 4a. Pre-Plan Research Spawn
 
-Spawn `jdi-researcher` in `pre-plan-discovery` mode via `Task(subagent_type="general-purpose")`. The spawn prompt MUST include:
+Spawn `jdi-researcher` in `pre-plan-discovery` mode via `Agent(subagent_type="general-purpose", mode="bypassPermissions")`. The spawn prompt MUST include:
 
 - The feature description (`$ARGUMENTS`)
 - `PRE_DISCOVERED_CONTEXT` as a YAML block
@@ -115,7 +115,7 @@ Store answers as `PRE_ANSWERED_QUESTIONS`.
 
 ### 5. Spawn Planner
 
-Spawn `jdi-planner` via `Task(subagent_type="general-purpose")`. The spawn prompt MUST include:
+Spawn `jdi-planner` via `Agent(subagent_type="general-purpose", mode="bypassPermissions")`. The spawn prompt MUST include:
 
 - The feature description (`$ARGUMENTS`)
 - `PRE_DISCOVERED_CONTEXT` as a YAML block — planner must NOT re-read scaffolding
@@ -140,7 +140,7 @@ If any check fails, STOP and report the gap to the user. Do not advance state on
 
 ### 7. Execute Deferred Ops
 
-If the planner returned `files_to_create` (scaffolding it could not write inside its sandbox), create those files now via the Write tool.
+The planner creates files directly (it has `bypassPermissions`). If any `files_to_create` entries were returned, create them now via the Write tool as a fallback.
 
 ### 8. Update State
 

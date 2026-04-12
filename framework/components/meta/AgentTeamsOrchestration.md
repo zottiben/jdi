@@ -68,15 +68,15 @@ and the `agent_rationale` explaining why you were picked for this task).
 If TASK_FILE is not provided (legacy plan), claim tasks from TaskList and read
 task details from the PLAN file.
 
-1. Implement using Edit tool
+1. Implement using Edit tool (existing files) and Write tool (new files)
 2. SendMessage to coordinator with structured return
 3. Mark task completed via TaskUpdate
 
-Report: files_modified, files_to_create, commits_pending.
+Report: files_modified, files_created, commits_pending.
 No git commit (use commits_pending).
 ```
 
-Spawned via `Task(subagent_type="general-purpose", ...)` — see
+Spawned via `Agent(subagent_type="general-purpose", mode="bypassPermissions", ...)` — see
 `.jdi/framework/jdi.md` Critical Constraints for why.
 
 ### `source: claude-code` — registered Claude Code subagent
@@ -89,21 +89,20 @@ Your agent definition has already been loaded by Claude Code from
 <same TEAM / PLAN / TASK_FILE / WORKING_DIR block + steps + report as above>
 ```
 
-Spawned via `Task(subagent_type="{task.agent}", ...)` — Claude Code validates
+Spawned via `Agent(subagent_type="{task.agent}", mode="bypassPermissions", ...)` — Claude Code validates
 the subagent type against its registered list. See
 `.jdi/framework/components/meta/AgentRouter.md` §4 for full rules.
 
 ---
 
-## Deferred Operations Checklist
+## Post-Agent Operations
 
 After all specialist tasks complete:
 
-1. **Collect** — Aggregate `files_modified`, `files_to_create`, `commits_pending` from all SendMessage results
-2. **Create files** — Write tool for each `files_to_create` entry
-3. **Execute commits** — `git add` + `git commit` for each `commits_pending` entry
-4. **Record hashes** — Store real commit hashes in state.yaml
-5. **Verify** — Confirm all `files_modified` are present in working tree
+1. **Collect** — Aggregate `files_modified`, `files_created`, `commits_pending` from all SendMessage results
+2. **Execute commits** — `git add` + `git commit` for each `commits_pending` entry
+3. **Record hashes** — Store real commit hashes in state.yaml
+4. **Verify** — Confirm all `files_modified` and `files_created` are present in working tree
 
 ---
 

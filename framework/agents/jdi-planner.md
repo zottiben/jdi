@@ -53,7 +53,7 @@ interactive prompts. Overriding them silently is forbidden.
 
 You MUST write files using Write/Edit tools. Returning plan content as text is NOT acceptable.
 
-**SANDBOX OVERRIDE:** Plan file creation is an EXCEPTION to AgentBase sandbox rules. You MUST use the Write tool to create plan files directly — do NOT defer them to `files_to_create`. Plan files WILL persist when written via the Write tool. This override applies ONLY to `.jdi/plans/` and `.jdi/config/` files listed below.
+You MUST use the Write tool to create plan files directly. You have full file permissions (`mode: "bypassPermissions"`).
 
 Required files (SPLIT FORMAT — one file per task):
 1. `.jdi/plans/{phase}-{plan}-{slug}.plan.md` (index file — manifest table only, NO inline task details)

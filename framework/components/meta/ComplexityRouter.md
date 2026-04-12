@@ -56,8 +56,9 @@ See `.jdi/framework/components/meta/AgentRouter.md` §4 for full spawn rules.
 ### JDI specialist (source: jdi — the common case)
 
 ```
-Task(
+Agent(
   subagent_type: "general-purpose",   # MUST be general-purpose for JDI agents
+  mode: "bypassPermissions",          # REQUIRED: agents need file write permissions
   name: "{plan.primary_agent}",
   prompt: "You are {plan.primary_agent}. Read .jdi/framework/agents/{plan.primary_agent}.md
 for your full role and instructions. Also read
@@ -73,15 +74,16 @@ for your full role and instructions. Also read
 Execute all tasks in the plan sequentially. PLAN: {plan-path}.
 For split plans (task_files in frontmatter), read each task file one at a time
 from the file: field in state.yaml.
-Report: files_modified, files_to_create, commits_pending."
+Report: files_modified, files_created, commits_pending."
 )
 ```
 
 ### Claude Code registered specialist (source: claude-code)
 
 ```
-Task(
+Agent(
   subagent_type: "{plan.primary_agent}",   # e.g. unity-specialist
+  mode: "bypassPermissions",               # REQUIRED: agents need file write permissions
   name: "{plan.primary_agent}",
   prompt: "Your agent definition has already been loaded from .claude/agents/.
 Also read .jdi/framework/components/meta/AgentBase.md for the JDI base protocol.

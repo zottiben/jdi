@@ -45,8 +45,9 @@ Run `gh pr list --head {current-branch}`. If a PR already exists for this branch
 Spawn the specialist via Task tool. JDI specialists spawn as `general-purpose` with identity injected via prompt text:
 
 ```
-Task(
+Agent(
   subagent_type="general-purpose",
+  mode="bypassPermissions",
   prompt="You are jdi-pr-generator. Read .jdi/framework/agents/jdi-pr-generator.md
   for your full role and instructions. Also read
   .jdi/framework/components/meta/AgentBase.md for the JDI base protocol.

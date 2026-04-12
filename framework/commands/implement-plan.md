@@ -101,15 +101,17 @@ Run `bun run src/index.ts state executing` (in installed projects: `npx jdi stat
 
 ### 8. Spawn and Execute
 
-**Platform constraint:** JDI specialists (`source: jdi`) are NOT registered Claude Code subagents and MUST be spawned via `subagent_type="general-purpose"` with identity injected via prompt text (`"You are {agent}. Read .jdi/framework/agents/{agent}.md..."`). Registered Claude Code subagents (`source: claude-code`) are spawned directly by name. See `framework/jdi.md` Critical Constraints and `framework/components/meta/AgentRouter.md` §4.
+**Platform constraints:**
+- JDI specialists (`source: jdi`) are NOT registered Claude Code subagents and MUST be spawned via `subagent_type="general-purpose"` with identity injected via prompt text. Registered Claude Code subagents (`source: claude-code`) are spawned directly by name. See `framework/jdi.md` Critical Constraints.
+- **All agents MUST be spawned with `mode: "bypassPermissions"`** — agents run in background and cannot prompt the user for Write/Edit approval. Without this mode, agents will be blocked on permission prompts and fail silently.
 
 **Single-agent mode:**
-- `source: jdi` → `Task(subagent_type="general-purpose", prompt="You are {plan.primary_agent}. Read .jdi/framework/agents/{plan.primary_agent}.md... PLAN: {index-path}")`
-- `source: claude-code` → `Task(subagent_type="{plan.primary_agent}", prompt="<standard spawn prompt> PLAN: {index-path}")`
+- `source: jdi` → `Agent(subagent_type="general-purpose", mode="bypassPermissions", prompt="You are {plan.primary_agent}. Read .jdi/framework/agents/{plan.primary_agent}.md... PLAN: {index-path}")`
+- `source: claude-code` → `Agent(subagent_type="{plan.primary_agent}", mode="bypassPermissions", prompt="<standard spawn prompt> PLAN: {index-path}")`
 
 For split plans, the agent reads task files one at a time via the `file:` field in `state.yaml`.
 
-**Agent Teams mode:** Spawn ONE Task call per task using the source-aware pattern above. Pass `TASK_FILE: {task-file-path}` so the agent loads only its assigned task.
+**Agent Teams mode:** Spawn ONE Agent call per task using the source-aware pattern above. Pass `TASK_FILE: {task-file-path}` so the agent loads only its assigned task. Every spawn MUST include `mode: "bypassPermissions"`.
 
 **Prompt scoping rules (non-negotiable):**
 - One task = one spawn. Never bundle multiple tasks into one prompt.
@@ -162,7 +164,7 @@ After each task's programmer returns, invoke `jdi-qa-tester` in `post-task-verif
 
 ### 11. Execute Deferred Ops
 
-Collect `files_to_create` returns from every agent and execute them via Write tool. Apply any pending commit operations. Do NOT skip this step — sandbox-returned artefacts are real work.
+Agents create files directly (they have `bypassPermissions`), so `files_to_create` should be empty. If any agent does return `files_to_create` entries, create them via Write tool. Execute `commits_pending` via `git add` + `git commit`. Do NOT skip this step.
 
 ### 12. Run Verification Gates
 

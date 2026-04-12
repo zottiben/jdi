@@ -42,8 +42,9 @@ Run `gh pr view {number}` to confirm the PR is reachable. If `gh` errors, STOP a
 Spawn the reviewer via Task tool. JDI specialists spawn as `general-purpose` with identity injected via prompt text:
 
 ```
-Task(
+Agent(
   subagent_type="general-purpose",
+  mode="bypassPermissions",
   prompt="Read .jdi/framework/components/meta/AgentBase.md for the base protocol.
 
   Read learnings before reviewing — these represent the team's coding standards

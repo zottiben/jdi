@@ -37,8 +37,9 @@ If there are unstaged changes but nothing is staged, ask the user:
 Spawn the committer via Task tool. JDI specialists spawn as `general-purpose` with identity injected via prompt text (see `framework/jdi.md` Critical Constraints):
 
 ```
-Task(
+Agent(
   subagent_type="general-purpose",
+  mode="bypassPermissions",
   prompt="You are jdi-committer. Read .jdi/framework/agents/jdi-committer.md for
   your full role and instructions. Also read .jdi/framework/components/meta/AgentBase.md
   for the JDI base protocol. If your spec has requires_components in frontmatter,
