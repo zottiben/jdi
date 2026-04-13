@@ -99,7 +99,7 @@ Then **STOP**. Do NOT spawn agents, do NOT advance state, do NOT edit files.
 
 ### 7. Advance State to Executing
 
-Run `npx jdi state executing`. Do NOT manually edit `.jdi/config/state.yaml`.
+Run `jdi state executing`. Do NOT manually edit `.jdi/config/state.yaml`.
 
 ### 8. Spawn and Execute
 
@@ -158,7 +158,7 @@ When an agent returns `status: blocked`:
 After each task's programmer returns successfully, run:
 
 ```bash
-npx jdi state advance-task {task-id}
+jdi state advance-task {task-id}
 ```
 
 Do NOT advance state for tasks that failed or were skipped. Do NOT batch advance calls — advance per task, in order.
@@ -185,7 +185,7 @@ If any gate fails, STOP — do not advance state to `complete`. Report the failu
 
 ### 13. Advance State to Complete
 
-Run `npx jdi state complete`. Do NOT manually edit `.jdi/config/state.yaml`.
+Run `jdi state complete`. Do NOT manually edit `.jdi/config/state.yaml`.
 
 ### 14. Present Summary
 

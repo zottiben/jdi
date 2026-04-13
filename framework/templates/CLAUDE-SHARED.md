@@ -47,11 +47,11 @@ Planning and implementation are **separate human-gated phases**. NEVER auto-proc
 
 Do NOT manually edit `.jdi/config/state.yaml` for status transitions. Use the CLI instead:
 
-- `npx jdi state plan-ready --plan-path "{path}" --plan-name "{name}"` — after plan creation
-- `npx jdi state approved` — after plan approval
-- `npx jdi state executing` — before implementation starts
-- `npx jdi state complete` — after implementation finishes
-- `npx jdi state advance-task {task-id}` — after each task completes
+- `jdi state plan-ready --plan-path "{path}" --plan-name "{name}"` — after plan creation
+- `jdi state approved` — after plan approval
+- `jdi state executing` — before implementation starts
+- `jdi state complete` — after implementation finishes
+- `jdi state advance-task {task-id}` — after each task completes
 
 You may only append to `decisions`, `deviations`, or `blockers` arrays in state.yaml directly via `<JDI:StateUpdate />`.
 

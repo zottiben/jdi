@@ -8,11 +8,11 @@ description: Record decisions, deviations, and blockers in state.yaml
 
 > **Status transitions are handled via CLI commands.** Do NOT manually edit `position`, `progress`, `current_plan`, `review`, or `session` fields in state.yaml. Use these commands instead:
 >
-> - `npx jdi state plan-ready --plan-path "{path}" --plan-name "{name}"`
-> - `npx jdi state approved`
-> - `npx jdi state executing`
-> - `npx jdi state complete`
-> - `npx jdi state advance-task {task-id}`
+> - `jdi state plan-ready --plan-path "{path}" --plan-name "{name}"`
+> - `jdi state approved`
+> - `jdi state executing`
+> - `jdi state complete`
+> - `jdi state advance-task {task-id}`
 
 Use state.yaml ONLY to record decisions, deviations, or blockers:
 

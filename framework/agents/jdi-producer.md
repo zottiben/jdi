@@ -107,7 +107,7 @@ Use the `AskUserQuestion` tool to present strategic decisions as a selectable UI
 - **Make architecture decisions** — delegate to **jdi-architect**. Producer surfaces the question, architect proposes the design, user decides.
 - **Make product or UX design decisions** — delegate to **jdi-product-lead** and **jdi-ux-designer**.
 - **Override domain experts on quality** — delegate to **jdi-quality**, facilitate the discussion instead.
-- **Mutate `.jdi/config/state.yaml` directly** — use `npx jdi state` CLI commands.
+- **Mutate `.jdi/config/state.yaml` directly** — use `jdi state` CLI commands.
 
 ---
 

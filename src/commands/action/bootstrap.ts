@@ -42,10 +42,40 @@ export function clearStaleState(cwd: string): void {
 
   const configDir = join(cwd, ".jdi/config");
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(
-    join(configDir, "state.yaml"),
-    "active_plan: null\ncurrent_wave: null\nmode: null\n",
-  );
+  // Copy the canonical state template from the framework
+  const templatePath = join(cwd, ".jdi", "framework", "config", "state.yaml");
+  if (existsSync(templatePath)) {
+    const template = readFileSync(templatePath, "utf-8");
+    writeFileSync(join(configDir, "state.yaml"), template);
+  } else {
+    // Minimal valid state matching the JDIState interface
+    writeFileSync(
+      join(configDir, "state.yaml"),
+      [
+        "position:",
+        "  phase: null",
+        "  phase_name: null",
+        "  plan: null",
+        "  plan_name: null",
+        "  task: null",
+        "  task_name: null",
+        "  status: idle",
+        "progress:",
+        "  phases_total: 0",
+        "  phases_completed: 0",
+        "  plans_total: 0",
+        "  plans_completed: 0",
+        "  tasks_total: 0",
+        "  tasks_completed: 0",
+        "current_plan:",
+        "  path: null",
+        "  tasks: []",
+        "  completed_tasks: []",
+        "  current_task_index: null",
+        "",
+      ].join("\n"),
+    );
+  }
   consola.info("Cache miss or fallback — cleared plan state");
 }
 

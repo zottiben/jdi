@@ -32,7 +32,28 @@ describe("clearStaleState", () => {
     const statePath = join(cwd, ".jdi/config/state.yaml");
     expect(existsSync(statePath)).toBe(true);
     const content = readFileSync(statePath, "utf-8");
-    expect(content).toBe("active_plan: null\ncurrent_wave: null\nmode: null\n");
+    // Should write a valid state matching JDIState interface (not the old active_plan/current_wave/mode format)
+    expect(content).toContain("position:");
+    expect(content).toContain("status: idle");
+    expect(content).toContain("progress:");
+    expect(content).toContain("current_plan:");
+  });
+
+  test("uses framework template when available", () => {
+    const cwd = makeTempDir();
+    const plansDir = join(cwd, ".jdi/plans");
+    mkdirSync(plansDir, { recursive: true });
+    // Create a framework template
+    const templateDir = join(cwd, ".jdi/framework/config");
+    mkdirSync(templateDir, { recursive: true });
+    const templateContent = "position:\n  status: idle\ncustom_field: from_template\n";
+    writeFileSync(join(templateDir, "state.yaml"), templateContent);
+
+    clearStaleState(cwd);
+
+    const statePath = join(cwd, ".jdi/config/state.yaml");
+    const content = readFileSync(statePath, "utf-8");
+    expect(content).toBe(templateContent);
   });
 
   test("works when plans directory does not exist yet", () => {

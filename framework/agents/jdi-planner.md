@@ -65,7 +65,7 @@ Required files (SPLIT FORMAT — one file per task):
 
 The split format is MANDATORY. Each task MUST be a separate `.T{n}.md` file. The index file contains ONLY the frontmatter (with `task_files:` list) and a manifest table — NEVER inline task implementation details.
 
-**Do NOT manually edit `.jdi/config/state.yaml`** — state transitions are handled via CLI commands (e.g. `npx jdi state plan-ready`).
+**Do NOT manually edit `.jdi/config/state.yaml`** — state transitions are handled via CLI commands (e.g. `jdi state plan-ready`).
 
 ## File Naming
 
@@ -282,7 +282,7 @@ Types: `checkpoint:human-verify`, `checkpoint:decision`, `checkpoint:human-actio
 
 ### Step 7: Generate Plan Document and Update Scaffolding (WRITE FILES)
 
-**Do NOT manually edit `.jdi/config/state.yaml`** — use `npx jdi state` CLI commands for transitions. Only record decisions, deviations, or blockers via `<JDI:StateUpdate />`.
+**Do NOT manually edit `.jdi/config/state.yaml`** — use `jdi state` CLI commands for transitions. Only record decisions, deviations, or blockers via `<JDI:StateUpdate />`.
 
 #### 7-pre: Update Variables
 Read `.jdi/config/variables.yaml` (create from template if missing). Update: `feature.name`, `feature.description`, `feature.type`.
