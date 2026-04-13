@@ -226,6 +226,140 @@ describe("transitionToComplete", () => {
   });
 });
 
+describe("transitionToComplete roadmap advancement", () => {
+  test("advances to next plan when ROADMAP has subsequent plan", async () => {
+    const dir = makeTempDir();
+    await Bun.write(
+      join(dir, ".jdi", "config", "state.yaml"),
+      [
+        "position:",
+        "  phase: 1",
+        '  plan: "01"',
+        '  plan_name: "First Plan"',
+        "  status: executing",
+        "progress:",
+        "  plans_completed: 0",
+      ].join("\n"),
+    );
+    await Bun.write(
+      join(dir, ".jdi", "ROADMAP.yaml"),
+      [
+        "phases:",
+        '  "1":',
+        "    plans:",
+        '      "01":',
+        '        name: "First Plan"',
+        '      "02":',
+        '        name: "Second Plan"',
+      ].join("\n"),
+    );
+
+    await transitionToComplete(dir);
+
+    const state = await readState(dir);
+    expect(state!.position?.plan).toBe("02");
+    expect(state!.position?.plan_name).toBe("Second Plan");
+    expect(state!.position?.status).toBe("idle");
+  });
+
+  test("increments plans_completed", async () => {
+    const dir = makeTempDir();
+    await Bun.write(
+      join(dir, ".jdi", "config", "state.yaml"),
+      [
+        "position:",
+        "  phase: 1",
+        '  plan: "01"',
+        "  status: executing",
+        "progress:",
+        "  plans_completed: 0",
+      ].join("\n"),
+    );
+
+    await transitionToComplete(dir);
+
+    const state = await readState(dir);
+    expect(state!.progress?.plans_completed).toBe(1);
+  });
+
+  test("handles last plan in phase (no next plan)", async () => {
+    const dir = makeTempDir();
+    await Bun.write(
+      join(dir, ".jdi", "config", "state.yaml"),
+      [
+        "position:",
+        "  phase: 1",
+        '  plan: "01"',
+        '  plan_name: "Only Plan"',
+        "  status: executing",
+        "progress:",
+        "  plans_completed: 0",
+      ].join("\n"),
+    );
+    await Bun.write(
+      join(dir, ".jdi", "ROADMAP.yaml"),
+      [
+        "phases:",
+        '  "1":',
+        "    plans:",
+        '      "01":',
+        '        name: "Only Plan"',
+      ].join("\n"),
+    );
+
+    await transitionToComplete(dir);
+
+    const state = await readState(dir);
+    expect(state!.position?.status).toBe("complete");
+  });
+
+  test("handles missing ROADMAP.yaml gracefully", async () => {
+    const dir = makeTempDir();
+    await Bun.write(
+      join(dir, ".jdi", "config", "state.yaml"),
+      [
+        "position:",
+        "  phase: 1",
+        '  plan: "01"',
+        "  status: executing",
+        "progress:",
+        "  plans_completed: 0",
+      ].join("\n"),
+    );
+    // No ROADMAP.yaml written
+
+    await transitionToComplete(dir);
+
+    const state = await readState(dir);
+    expect(state!.position?.status).toBe("complete");
+  });
+
+  test("handles malformed ROADMAP.yaml gracefully", async () => {
+    const dir = makeTempDir();
+    await Bun.write(
+      join(dir, ".jdi", "config", "state.yaml"),
+      [
+        "position:",
+        "  phase: 1",
+        '  plan: "01"',
+        "  status: executing",
+        "progress:",
+        "  plans_completed: 0",
+      ].join("\n"),
+    );
+    await Bun.write(
+      join(dir, ".jdi", "ROADMAP.yaml"),
+      "not: valid: yaml: [",
+    );
+
+    await transitionToComplete(dir);
+
+    const state = await readState(dir);
+    // Should not crash — status should still be set to complete
+    expect(state!.position?.status).toBe("complete");
+  });
+});
+
 describe("advanceTask", () => {
   test("adds task to completed_tasks and advances index", async () => {
     const dir = makeTempDir();

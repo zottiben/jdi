@@ -22,7 +22,7 @@ Execute an approved plan with complexity-based routing. Deterministic workflow �
 - `--dry-run` — Preview without writing: list files that would change and agents that would be spawned, then STOP
 - `--skip-qa` — Skip the post-task `jdi-qa-tester` verification pass
 
-> **Do NOT use the built-in `EnterWorktree` tool.** If `state.yaml` has `worktree.active: true`, just `cd` into `worktree.path`.
+> **Do NOT use the built-in `EnterWorktree` tool.** If `.jdi/config/state.yaml` has `worktree.active: true`, just `cd` into `worktree.path`.
 
 ---
 
@@ -53,7 +53,7 @@ Read the plan index file (path from `$ARGUMENTS` or from `DISCOVERED_STATE.curre
 
 **Format detection:** if frontmatter contains `task_files:`, this is a split plan — read each task file's frontmatter in a single batch. If absent, this is a legacy monolithic plan — all tasks are inline in the index.
 
-**Plan status gate:** if the plan's status in `state.yaml` is not `approved`, STOP and tell the user: "Plan is in status `{status}` — run `/jdi:create-plan` (or the review loop) to reach `approved` before implementing."
+**Plan status gate:** if the plan's status in `.jdi/config/state.yaml` is not `approved`, STOP and tell the user: "Plan is in status `{status}` — run `/jdi:create-plan` (or the review loop) to reach `approved` before implementing."
 
 ### 3. Resolve Per-Task Agents
 
@@ -99,7 +99,7 @@ Then **STOP**. Do NOT spawn agents, do NOT advance state, do NOT edit files.
 
 ### 7. Advance State to Executing
 
-Run `bun run src/index.ts state executing` (in installed projects: `npx jdi state executing`). Do NOT manually edit `state.yaml`.
+Run `bun run src/index.ts state executing` (in installed projects: `npx jdi state executing`). Do NOT manually edit `.jdi/config/state.yaml`.
 
 ### 8. Spawn and Execute
 
@@ -111,7 +111,7 @@ Run `bun run src/index.ts state executing` (in installed projects: `npx jdi stat
 - `source: jdi` → `Agent(subagent_type="general-purpose", mode="bypassPermissions", prompt="You are {plan.primary_agent}. Read .jdi/framework/agents/{plan.primary_agent}.md... PLAN: {index-path}")`
 - `source: claude-code` → `Agent(subagent_type="{plan.primary_agent}", mode="bypassPermissions", prompt="<standard spawn prompt> PLAN: {index-path}")`
 
-For split plans, the agent reads task files one at a time via the `file:` field in `state.yaml`.
+For split plans, the agent reads task files one at a time via the `file:` field in `.jdi/config/state.yaml`.
 
 **Agent Teams mode:** Spawn ONE Agent call per task using the source-aware pattern above. Pass `TASK_FILE: {task-file-path}` so the agent loads only its assigned task. Every spawn MUST include `mode: "bypassPermissions"`.
 
@@ -185,7 +185,7 @@ If any gate fails, STOP — do not advance state to `complete`. Report the failu
 
 ### 13. Advance State to Complete
 
-Run `bun run src/index.ts state complete`. Do NOT manually edit `state.yaml`.
+Run `bun run src/index.ts state complete`. Do NOT manually edit `.jdi/config/state.yaml`.
 
 ### 14. Present Summary
 

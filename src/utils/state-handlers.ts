@@ -104,6 +104,7 @@ export async function transitionToExecuting(
 
 /**
  * Transition state to "complete" after implementation finishes.
+ * Reads ROADMAP.yaml to advance to the next plan in the current phase if one exists.
  */
 export async function transitionToComplete(cwd: string): Promise<void> {
   const state = await readState(cwd) ?? {};
@@ -111,6 +112,50 @@ export async function transitionToComplete(cwd: string): Promise<void> {
     ...state.position,
     status: "complete",
   } as any;
+
+  // Increment plans_completed
+  if (!state.progress) {
+    state.progress = { phases_total: 0, phases_completed: 0, plans_total: 0, plans_completed: 0, tasks_total: 0, tasks_completed: 0 };
+  }
+  state.progress.plans_completed = (state.progress.plans_completed ?? 0) + 1;
+
+  // Try to advance to next plan in the current phase via ROADMAP.yaml
+  try {
+    const roadmapPath = join(cwd, ".jdi", "ROADMAP.yaml");
+    if (existsSync(roadmapPath)) {
+      const content = await Bun.file(roadmapPath).text();
+      const roadmap = parseYaml(content) as Record<string, unknown>;
+
+      const phases = roadmap?.phases as Record<string, unknown> | undefined;
+      if (phases && typeof phases === "object") {
+        const currentPhase = state.position?.phase;
+        if (currentPhase != null) {
+          const phase = phases[String(currentPhase)] as Record<string, unknown> | undefined;
+          const plans = phase?.plans as Record<string, unknown> | undefined;
+          if (plans && typeof plans === "object") {
+            const sortedKeys = Object.keys(plans).sort();
+            const currentPlan = state.position?.plan;
+            const currentIndex = sortedKeys.indexOf(String(currentPlan));
+            if (currentIndex !== -1 && currentIndex + 1 < sortedKeys.length) {
+              const nextKey = sortedKeys[currentIndex + 1];
+              const nextPlan = plans[nextKey] as Record<string, unknown> | undefined;
+              state.position = {
+                ...state.position,
+                plan: nextKey,
+                plan_name: (nextPlan?.name as string) ?? nextKey,
+                status: "idle",
+                task: null,
+                task_name: null,
+              } as any;
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Gracefully skip advancement on any error (malformed ROADMAP, read failure, etc.)
+  }
+
   await updateSessionActivity(cwd, state);
 }
 

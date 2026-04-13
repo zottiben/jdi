@@ -20,7 +20,7 @@ Create an implementation plan using a single planner agent (includes research). 
 
 - `--worktree` — Create git worktree with full environment before planning (follow `.claude/commands/jdi/worktree.md` steps)
 - `--worktree-lightweight` — Same but skip databases/web server (deps + migrate only)
-- `--status` — Status mode: generate a plan progress report using `state.yaml` + the current plan. Does NOT spawn the planner. See Status Mode section below.
+- `--status` — Status mode: generate a plan progress report using `.jdi/config/state.yaml` + the current plan. Does NOT spawn the planner. See Status Mode section below.
 - `--with-tests` — Force test plan generation regardless of test suite detection. When set, the planner generates test tasks even if no existing test suite is found.
 - `--without-tests` — Suppress test plan generation even when a test suite is detected. Useful for plans that only touch documentation, config, or framework files where test generation would be noise.
 
@@ -150,7 +150,7 @@ The planner creates files directly (it has `bypassPermissions`). If any `files_t
 
 ### 8. Update State
 
-Run the state CLI — do NOT manually edit `state.yaml`:
+Run the state CLI — do NOT manually edit `.jdi/config/state.yaml`:
 
 ```bash
 bun run src/index.ts state plan-ready --plan-path ".jdi/plans/{plan-file}" --plan-name "{plan name}"
