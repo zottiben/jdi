@@ -153,10 +153,8 @@ The planner creates files directly (it has `bypassPermissions`). If any `files_t
 Run the state CLI — do NOT manually edit `.jdi/config/state.yaml`:
 
 ```bash
-bun run src/index.ts state plan-ready --plan-path ".jdi/plans/{plan-file}" --plan-name "{plan name}"
+npx jdi state plan-ready --plan-path ".jdi/plans/{plan-file}" --plan-name "{plan name}"
 ```
-
-(In installed projects: `npx jdi state plan-ready ...`)
 
 ### 9. Present Summary
 
@@ -174,7 +172,7 @@ End with the exact prompt: _"Provide feedback to refine, or say **approved** to 
 ### 10. Review Loop
 
 - **Feedback:** apply the requested changes in place (edit existing plan files, increment revision counter in frontmatter), re-present the summary, and ask the same question again.
-- **Approval** (user says "approved", "lgtm", "looks good", or equivalent): run `bun run src/index.ts state approved`, output the completion message, and STOP.
+- **Approval** (user says "approved", "lgtm", "looks good", or equivalent): run `npx jdi state approved`, output the completion message, and STOP.
 
 **Never loop back to step 5.** Feedback refines; it does not restart.
 
