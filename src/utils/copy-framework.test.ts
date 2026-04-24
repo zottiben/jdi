@@ -92,7 +92,7 @@ describe("copyFrameworkFiles", () => {
     const dir = makeTempDir();
     const claudeDir = join(dir, ".claude");
     mkdirSync(claudeDir, { recursive: true });
-    const original = "# My Project\n\n## JDI Workflow Routing\n\nCustom routing content";
+    const original = "# My Project\n\n## Agent-First Default\n\nCustom routing content";
     writeFileSync(join(claudeDir, "CLAUDE.md"), original);
 
     await copyFrameworkFiles(dir, "generic", false);
@@ -111,7 +111,7 @@ describe("copyFrameworkFiles", () => {
 
     const content = await Bun.file(join(claudeDir, "CLAUDE.md")).text();
     expect(content).toContain("# My Project");
-    expect(content).toContain("## JDI Workflow Routing");
+    expect(content).toContain("## Agent-First Default");
   });
 
   test("applies adapter config for the detected project type", async () => {
